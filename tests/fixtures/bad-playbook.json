@@ -1,0 +1,15 @@
+{
+  "name": "bad-playbook",
+  "description": "Structurally valid playbook with a compound referencing an unknown weight id",
+  "halfLifeDays": { "hiring": 45, "funding": 90, "press": 30 },
+  "weights": [
+    { "id": "w-first-gtm", "signalType": "hiring", "subtype": "first-gtm", "points": 40,
+      "hypothesis": "A first GTM/growth hire means the company is staffing a motion it hasn't systematized", "status": "untested" },
+    { "id": "w-funding-180", "signalType": "funding", "points": 25,
+      "hypothesis": "A raise in the last ~6 months means budget exists", "status": "untested" }
+  ],
+  "compounds": [
+    { "id": "c-bad", "requiresWeightIds": ["w-funding-180", "w-nope"], "withinDays": 90, "multiplier": 1.5,
+      "hypothesis": "References a weight id that does not exist", "status": "untested" }
+  ]
+}

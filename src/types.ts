@@ -1,0 +1,87 @@
+export type AtsProvider = 'greenhouse' | 'lever' | 'ashby';
+
+export interface Account {
+  id: string;                 // kebab-case slug, unique
+  name: string;
+  domain: string;             // demo accounts MUST end .example
+  group: 'core' | 'contrast';
+  ats?: { provider: AtsProvider; slug: string };
+  rss?: string;               // known feed URL if any
+  demo?: boolean;             // true only in fixtures/demo/accounts.json
+}
+
+export type SignalType = 'hiring' | 'funding' | 'press';
+
+export interface SignalEvent {
+  id: string;
+  accountId: string;
+  type: SignalType;
+  subtype: string;            // hiring: 'growth-eng' | 'first-gtm' | 'ai-eng' | 'generic-eng' | 'other'
+  date: string;               // ISO yyyy-mm-dd
+  url: string;                // citation — REQUIRED, every event traceable
+  summary: string;
+  confidence: number;         // 0..1
+  source: string;             // e.g. 'greenhouse', 'fixture'
+  demo: boolean;
+}
+
+export interface Weight {
+  id: string;
+  signalType: SignalType;
+  subtype?: string;           // matches SignalEvent.subtype when present
+  points: number;
+  hypothesis: string;
+  status: 'untested' | 'supported' | 'refuted';
+}
+
+export interface Compound {
+  id: string;
+  requiresWeightIds: [string, string];
+  withinDays: number;         // both events within this window of each other
+  multiplier: number;
+  hypothesis: string;
+  status: 'untested' | 'supported' | 'refuted';
+}
+
+export interface Playbook {
+  name: string;
+  description: string;
+  halfLifeDays: Record<SignalType, number>;
+  weights: Weight[];
+  compounds: Compound[];
+}
+
+export interface Contribution {
+  weightId: string;
+  eventId: string;
+  eventUrl: string;
+  eventDate: string;
+  basePoints: number;
+  decayFactor: number;        // 0.5 ** (ageDays / halfLife)
+  points: number;             // basePoints * decayFactor
+}
+
+export interface ScoredAccount {
+  accountId: string;
+  score: number;              // rounded to 2dp at output layer only
+  contributions: Contribution[];
+  compoundsApplied: { compoundId: string; multiplier: number }[];
+}
+
+export interface Posting {   // normalized across the 3 ATS providers
+  id: string;
+  title: string;
+  url: string;
+  publishedAt: string;       // ISO date; if provider omits it, use asOf date
+  location?: string;
+}
+
+export interface AuditRow {
+  accountId: string;
+  group: 'core' | 'contrast';
+  atsReachable: boolean | null;   // null = no slug configured
+  atsProvider?: AtsProvider;
+  postingCount?: number;
+  rssResolvable: boolean;
+  notes: string[];
+}
