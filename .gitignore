@@ -1,0 +1,10 @@
+node_modules/
+SPEC.md
+tasks/
+docs/superpowers/
+.remember/
+.superpowers/
+playbooks/local/
+.env*
+report.html
+events.jsonl
