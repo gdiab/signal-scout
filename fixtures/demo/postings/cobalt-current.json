@@ -1,0 +1,5 @@
+[
+  { "id": "p1", "title": "Senior Growth Engineer", "url": "https://cobaltcurrent.example/careers/senior-growth-engineer", "publishedAt": "2026-06-15", "location": "Remote - US", "demo": true },
+  { "id": "p2", "title": "AI Engineer, Applied Research", "url": "https://cobaltcurrent.example/careers/ai-engineer-applied-research", "publishedAt": "2026-05-20", "demo": true },
+  { "id": "p3", "title": "Data Platform Engineer", "url": "https://cobaltcurrent.example/careers/data-platform-engineer", "publishedAt": "2026-04-18", "demo": true }
+]

@@ -1,0 +1,5 @@
+[
+  { "id": "p1", "title": "Machine Learning Engineer", "url": "https://northlightdata.example/careers/machine-learning-engineer", "publishedAt": "2026-06-05", "location": "Remote - US", "demo": true },
+  { "id": "p2", "title": "Infrastructure Engineer", "url": "https://northlightdata.example/careers/infrastructure-engineer", "publishedAt": "2026-05-12", "demo": true },
+  { "id": "p3", "title": "Executive Assistant", "url": "https://northlightdata.example/careers/executive-assistant", "publishedAt": "2026-04-22", "demo": true }
+]

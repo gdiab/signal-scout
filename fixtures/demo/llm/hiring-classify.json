@@ -1,1 +1,24 @@
-{}
+{
+  "fernglass-labs:p1": "growth-eng",
+  "fernglass-labs:p2": "growth-eng",
+  "fernglass-labs:p3": "generic-eng",
+  "fernglass-labs:p4": "other",
+
+  "loomwright:p1": "first-gtm",
+  "loomwright:p2": "other",
+  "loomwright:p3": "generic-eng",
+
+  "cobalt-current:p1": "growth-eng",
+  "cobalt-current:p2": "ai-eng",
+  "cobalt-current:p3": "generic-eng",
+
+  "northlight-data:p1": "ai-eng",
+  "northlight-data:p2": "generic-eng",
+  "northlight-data:p3": "other",
+
+  "quietstack:p1": "generic-eng",
+  "quietstack:p2": "generic-eng",
+
+  "bramblewire-systems:p1": "generic-eng",
+  "bramblewire-systems:p2": "other"
+}

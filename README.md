@@ -2,23 +2,37 @@
 
 An agent-run growth-signal engine with a closed experiment loop — it finds accounts showing buying signals, has an LLM agent write a cited 'why now' brief for each, and treats its scoring weights as testable hypotheses.
 
-**Status: building.** This repo currently contains the project scaffold (CI, license, ADRs) only. There is no `src/` yet, no CLI to run, and no data to inspect. The sections below describe the design this project is being built toward, not shipped functionality.
+**Status: building.** The paragraph above describes the full design. Phase 1 — the coverage audit, the scoring engine, and a zero-credential demo mode — works end-to-end today. Live `score` (hiring signal only) is implemented and key-guarded but has not yet been verified against a live `ANTHROPIC_API_KEY`. The "why now" brief, funding/press signal sources, the experiment loop, and the HTML report described above are Phase 2.
 
 ## Quickstart
 
-Not runnable yet. Once the CLI lands, this section will show the exact commands for a fresh clone, including a zero-credential demo mode:
-
 ```
+git clone <repo-url>
+cd signal-scout
 npm i
-npx tsx src/cli.ts audit
 npx tsx src/cli.ts score --demo
 ```
 
+`score --demo` runs the full pipeline — audit summary, hiring-posting classification (recorded LLM responses) merged with pre-made funding/press signal events, and a ranked score table with full lineage (every point traces to a dated, cited event) — entirely against fictional companies in `fixtures/demo/`, with zero network calls and zero credentials required. Output is clearly labeled `⚠ synthetic demo data — fictional companies`.
+
+```
+npx tsx src/cli.ts audit --demo
+```
+
+Same synthetic fixtures, coverage-only view: for each account, whether an ATS board and an RSS feed were found.
+
+```
+npx tsx src/cli.ts audit
+npx tsx src/cli.ts score
+```
+
+Runs against the real account list (`accounts/ai-startups.json`). `audit` probes live ATS boards and RSS feeds and needs no credentials. Live `score` is implemented but not yet verified end-to-end against a live key: it requires `ANTHROPIC_API_KEY` (it exits with a clear error naming the variable if the key is unset, before any network call is made), and with a key provided it fetches postings from each account's ATS and classifies them with Haiku. Live `score` ranks on hiring signal only; funding and press sources land in Phase 2.
+
 ## Design principles
 
-- **Signal-first coverage audit.** Before scoring anything, the tool will audit an account list for signal *availability* (public ATS job boards, press/RSS) and report coverage as a first-class output, not an internal step.
-- **Synthetic demo data, clearly labeled.** When a `--demo` mode ships, it will run entirely on fictional companies with `.example` domains and mocked LLM responses — no real company names, no network calls, no API key required. Every place demo output surfaces (fixtures, report, README) will label it as synthetic. See `docs/adr/0002-fictional-companies-in-demo-fixtures.md`.
-- **Weights as hypotheses.** Playbook scoring weights will carry an explicit hypothesis and a status (`untested | supported | refuted`), updated by comparing outcomes for accounts with vs. without a signal.
+- **Signal-first coverage audit.** Before scoring anything, the tool audits an account list for signal *availability* (public ATS job boards, press/RSS) and reports coverage as a first-class output, not an internal step.
+- **Synthetic demo data, clearly labeled.** `--demo` runs entirely on fictional companies with `.example` domains and recorded LLM responses — no real company names, no network calls, no API key required. Every place demo output surfaces (fixtures, CLI output, README) labels it as synthetic. See `docs/adr/0002-fictional-companies-in-demo-fixtures.md`.
+- **Weights as hypotheses.** Playbook scoring weights carry an explicit hypothesis and a status (`untested | supported | refuted`), intended to be updated by comparing outcomes for accounts with vs. without a signal.
 - **LLM-only entity matching, no embeddings.** See `docs/adr/0001-llm-only-entity-matching.md`.
 - **Funding via press, not SEC Form D (for now).** See `docs/adr/0003-funding-via-press-form-d-deferred.md`.
 

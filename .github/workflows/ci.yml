@@ -17,5 +17,4 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      # demo smoke added in Task 8
-      # - run: npx tsx src/cli.ts score --demo
+      - run: npx tsx src/cli.ts score --demo

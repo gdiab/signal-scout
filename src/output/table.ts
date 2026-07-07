@@ -1,4 +1,4 @@
-import type { AuditRow } from '../types.js';
+import type { Account, AuditRow, ScoredAccount, SignalEvent } from '../types.js';
 
 const GROUPS: Array<AuditRow['group']> = ['core', 'contrast'];
 const GROUP_LABEL_WIDTH = 8;
@@ -58,6 +58,61 @@ export function renderAuditTable(rows: AuditRow[]): string {
   }
 
   if (rows.some((r) => r.demo)) {
+    lines.push('');
+    lines.push('⚠ synthetic demo data — fictional companies');
+  }
+
+  return lines.join('\n');
+}
+
+const MAX_CONTRIBUTIONS_SHOWN = 3;
+
+/**
+ * Renders a ranked score table: one summary line per account (rank, name,
+ * score to 2dp) followed by up to 3 indented top-contribution lines (points,
+ * decay factor, subtype, date, url — full lineage back to the source event)
+ * and any applied compound multipliers, then a demo-data warning footer if
+ * any scored account was a demo fixture.
+ */
+export function renderScoreTable(
+  scored: ScoredAccount[],
+  accounts: Account[],
+  events: SignalEvent[],
+): string {
+  const accountById = new Map(accounts.map((a) => [a.id, a]));
+  const eventById = new Map(events.map((e) => [e.id, e]));
+
+  const nameWidth = Math.max(
+    0,
+    ...scored.map((s) => (accountById.get(s.accountId)?.name ?? s.accountId).length),
+  );
+
+  const lines: string[] = [];
+
+  scored.forEach((s, index) => {
+    const account = accountById.get(s.accountId);
+    const name = account?.name ?? s.accountId;
+    const rank = index + 1;
+    lines.push(`${rank}  ${name.padEnd(nameWidth)}  ${s.score.toFixed(2)}`);
+
+    const topContributions = [...s.contributions]
+      .sort((a, b) => b.points - a.points)
+      .slice(0, MAX_CONTRIBUTIONS_SHOWN);
+
+    for (const c of topContributions) {
+      const event = eventById.get(c.eventId);
+      const subtype = event?.subtype ?? '?';
+      lines.push(
+        `    ${c.points.toFixed(2)} (decay×${c.decayFactor.toFixed(2)}) ${subtype} ${c.eventDate} ${c.eventUrl}`,
+      );
+    }
+
+    for (const compound of s.compoundsApplied) {
+      lines.push(`    compound ×${compound.multiplier}: ${compound.compoundId}`);
+    }
+  });
+
+  if (scored.some((s) => accountById.get(s.accountId)?.demo)) {
     lines.push('');
     lines.push('⚠ synthetic demo data — fictional companies');
   }

@@ -1,0 +1,17 @@
+[
+  { "id": "fernglass-labs", "name": "Fernglass Labs", "domain": "fernglass.example", "group": "core",
+    "ats": { "provider": "greenhouse", "slug": "fernglass" }, "rss": "https://fernglass.example/feed", "demo": true },
+  { "id": "loomwright", "name": "Loomwright", "domain": "loomwright.example", "group": "core",
+    "ats": { "provider": "lever", "slug": "loomwright" }, "demo": true },
+  { "id": "cobalt-current", "name": "Cobalt Current", "domain": "cobaltcurrent.example", "group": "core",
+    "ats": { "provider": "ashby", "slug": "cobaltcurrent" }, "rss": "https://cobaltcurrent.example/feed", "demo": true },
+  { "id": "northlight-data", "name": "Northlight Data", "domain": "northlightdata.example", "group": "core",
+    "ats": { "provider": "greenhouse", "slug": "northlightdata" }, "demo": true },
+  { "id": "quietstack", "name": "Quietstack", "domain": "quietstack.example", "group": "core",
+    "ats": { "provider": "lever", "slug": "quietstack" }, "rss": "https://quietstack.example/feed", "demo": true },
+  { "id": "bramblewire-systems", "name": "Bramblewire Systems", "domain": "bramblewire.example", "group": "core",
+    "ats": { "provider": "ashby", "slug": "bramblewire" }, "demo": true },
+
+  { "id": "meridian-imaging", "name": "Meridian Imaging Partners", "domain": "meridianimaging.example", "group": "contrast", "demo": true },
+  { "id": "cartway-freight", "name": "Cartway Freight Solutions", "domain": "cartwayfreight.example", "group": "contrast", "demo": true }
+]

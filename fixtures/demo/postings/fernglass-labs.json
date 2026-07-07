@@ -1,0 +1,6 @@
+[
+  { "id": "p1", "title": "Growth Engineer", "url": "https://fernglass.example/careers/growth-engineer", "publishedAt": "2026-06-20", "location": "Remote - US", "demo": true },
+  { "id": "p2", "title": "Senior Growth Engineer, Activation", "url": "https://fernglass.example/careers/senior-growth-engineer-activation", "publishedAt": "2026-05-10", "location": "Remote - US", "demo": true },
+  { "id": "p3", "title": "Backend Platform Engineer", "url": "https://fernglass.example/careers/backend-platform-engineer", "publishedAt": "2026-04-15", "demo": true },
+  { "id": "p4", "title": "Office Manager", "url": "https://fernglass.example/careers/office-manager", "publishedAt": "2026-04-20", "location": "San Francisco, CA", "demo": true }
+]

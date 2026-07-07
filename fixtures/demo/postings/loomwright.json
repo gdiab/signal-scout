@@ -1,0 +1,5 @@
+[
+  { "id": "p1", "title": "Founding GTM Engineer", "url": "https://loomwright.example/careers/founding-gtm-engineer", "publishedAt": "2026-06-25", "location": "Remote - US", "demo": true },
+  { "id": "p2", "title": "Customer Success Manager", "url": "https://loomwright.example/careers/customer-success-manager", "publishedAt": "2026-05-01", "demo": true },
+  { "id": "p3", "title": "Full-Stack Engineer", "url": "https://loomwright.example/careers/full-stack-engineer", "publishedAt": "2026-04-25", "location": "New York, NY", "demo": true }
+]

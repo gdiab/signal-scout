@@ -1,0 +1,4 @@
+[
+  { "id": "p1", "title": "Product Engineer", "url": "https://quietstack.example/careers/product-engineer", "publishedAt": "2026-06-01", "demo": true },
+  { "id": "p2", "title": "Support Engineer", "url": "https://quietstack.example/careers/support-engineer", "publishedAt": "2026-04-10", "demo": true }
+]
