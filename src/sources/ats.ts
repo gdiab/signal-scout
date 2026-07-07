@@ -7,7 +7,7 @@ export interface ProbeResult {
 }
 
 /** Thrown by fetchPostings when the ATS responds with a non-200 status. */
-class AtsHttpError extends Error {}
+export class AtsHttpError extends Error {}
 
 function buildUrl(provider: AtsProvider, slug: string): string {
   switch (provider) {
@@ -67,7 +67,7 @@ export async function fetchPostings(
   fetchImpl: typeof fetch = fetch,
 ): Promise<Posting[]> {
   const url = buildUrl(provider, slug);
-  const res = await fetchImpl(url);
+  const res = await fetchImpl(url, { signal: AbortSignal.timeout(5000) });
   if (res.status !== 200) {
     throw new AtsHttpError(`ATS fetch failed for ${provider}/${slug}: HTTP ${res.status}`);
   }

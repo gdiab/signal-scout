@@ -245,7 +245,7 @@ describe('renderAuditTable', () => {
     expect(renderAuditTable(rows)).toContain('⚠ synthetic demo data — fictional companies');
   });
 
-  it('includes an per-account row with id, ats provider+count, rss marker, and notes', () => {
+  it('includes a per-account row with id, ats provider+count, rss marker, and notes', () => {
     const rows: AuditRow[] = [
       row({
         accountId: 'acme',

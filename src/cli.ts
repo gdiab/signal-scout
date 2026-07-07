@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { Command } from 'commander';
-import type { Account, AtsProvider, Posting, SignalEvent } from './types.js';
-import { fetchPostings, probeBoard, type ProbeResult } from './sources/ats.js';
+import type { Account, AtsProvider, AuditRow, Posting, SignalEvent } from './types.js';
+import { fetchPostings, probeBoard, AtsHttpError, type ProbeResult } from './sources/ats.js';
 import { resolveRss, type RssResult } from './sources/rss.js';
 import { auditAccounts, type AuditDeps } from './audit.js';
 import { renderAuditTable, renderScoreTable } from './output/table.js';
@@ -19,6 +20,9 @@ const DEMO_SIGNALS_PATH = 'fixtures/demo/signals.jsonl';
 // Pinned so demo output is deterministic across runs/machines — the demo
 // fixtures (postings, signals.jsonl) were authored relative to this date.
 const DEMO_AS_OF = '2026-07-06';
+
+/** Default cap on postings classified per account in live mode, overridable via --max-postings. */
+const DEFAULT_MAX_POSTINGS_PER_ACCOUNT = 40;
 
 function loadAccounts(path: string): Account[] {
   return JSON.parse(readFileSync(path, 'utf-8'));
@@ -41,6 +45,28 @@ export async function demoProbeBoard(
   _fetchImpl?: typeof fetch,
 ): Promise<ProbeResult> {
   return { reachable: true, postingCount: 0 };
+}
+
+function demoPostingCount(accountId: string): number {
+  const path = `${DEMO_POSTINGS_DIR}/${accountId}.json`;
+  if (!existsSync(path)) return 0;
+  const postings: Posting[] = JSON.parse(readFileSync(path, 'utf-8'));
+  return postings.length;
+}
+
+/**
+ * Patches real posting counts into demo audit rows. demoProbeBoard only ever
+ * receives provider+slug (matching the real probeBoard signature), not the
+ * account id the postings fixtures are keyed by, so it always reports
+ * postingCount 0 by construction. Left unpatched, the audit table would claim
+ * zero postings for boards the score table then cites postings from — an
+ * internal contradiction in one output. Fix it here, at the wiring layer,
+ * where the account id is available.
+ */
+function withDemoPostingCounts(rows: AuditRow[]): AuditRow[] {
+  return rows.map((row) =>
+    row.atsReachable ? { ...row, postingCount: demoPostingCount(row.accountId) } : row,
+  );
 }
 
 /** Demo-mode RSS probe: resolvable iff the account declares an rss URL. No network. */
@@ -67,7 +93,7 @@ async function runAudit(opts: { accounts: string; demo?: boolean }): Promise<voi
     : { probeBoard, probeRss: resolveRss };
 
   const rows = await auditAccounts(accounts, deps);
-  console.log(renderAuditTable(rows));
+  console.log(renderAuditTable(opts.demo ? withDemoPostingCounts(rows) : rows));
 }
 
 /**
@@ -83,7 +109,7 @@ export async function runScoreDemo(): Promise<string> {
   const accounts = loadAccounts(DEMO_ACCOUNTS_PATH);
 
   const auditDeps: AuditDeps = { probeBoard: demoProbeBoard, probeRss: demoProbeRss, delayMs: 0 };
-  const auditRows = await auditAccounts(accounts, auditDeps);
+  const auditRows = withDemoPostingCounts(await auditAccounts(accounts, auditDeps));
   const auditOutput = renderAuditTable(auditRows);
 
   const llm = fixtureLlm(DEMO_LLM_PATH);
@@ -106,6 +132,93 @@ export async function runScoreDemo(): Promise<string> {
   return `${auditOutput}\n\n${scoreOutput}`;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Selects the `n` most recently published postings (by `publishedAt`,
+ * descending); postings with no `publishedAt` (some ATS providers omit it —
+ * see normalizeAshby) sort last, since we have no recency signal for them.
+ * Pure and side-effect free so it can be unit-tested without any live calls.
+ */
+export function selectRecentPostings(postings: Posting[], n: number): Posting[] {
+  return [...postings]
+    .sort((a, b) => {
+      if (!a.publishedAt && !b.publishedAt) return 0;
+      if (!a.publishedAt) return 1;
+      if (!b.publishedAt) return -1;
+      return a.publishedAt < b.publishedAt ? 1 : a.publishedAt > b.publishedAt ? -1 : 0;
+    })
+    .slice(0, n);
+}
+
+/**
+ * Builds the live audit rows AND fetches each account's postings, in one pass
+ * per account. probeBoard(...) internally calls fetchPostings and discards
+ * the result, keeping only the count — calling it and then fetchPostings
+ * again for classification meant every reachable board was fetched twice.
+ * Here we call fetchPostings once per account, derive the audit row's
+ * reachable/postingCount directly from that result (mirroring probeBoard's
+ * own error handling exactly, so the audit table's shape is unchanged), and
+ * hand the postings back for reuse by the classification step.
+ */
+async function auditAndFetchLive(
+  accounts: Account[],
+  delayMs = 150,
+): Promise<{ rows: AuditRow[]; postingsByAccountId: Map<string, Posting[]> }> {
+  const rows: AuditRow[] = [];
+  const postingsByAccountId = new Map<string, Posting[]>();
+
+  for (let i = 0; i < accounts.length; i++) {
+    const account = accounts[i];
+    const notes: string[] = [];
+
+    let atsReachable: boolean | null = null;
+    let atsProvider: AuditRow['atsProvider'];
+    let postingCount: number | undefined;
+
+    if (account.ats) {
+      atsProvider = account.ats.provider;
+      try {
+        const postings = await fetchPostings(account.ats.provider, account.ats.slug);
+        atsReachable = true;
+        postingCount = postings.length;
+        postingsByAccountId.set(account.id, postings);
+      } catch (err) {
+        atsReachable = false;
+        notes.push(
+          err instanceof AtsHttpError ? 'ats board unreachable' : `ats error: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    } else {
+      notes.push('no ats slug configured');
+    }
+
+    const rssResult = await resolveRss(account.domain, account.rss);
+    if (!rssResult.resolvable) {
+      notes.push('no rss feed found');
+    }
+
+    rows.push({
+      accountId: account.id,
+      group: account.group,
+      atsReachable,
+      atsProvider,
+      postingCount,
+      rssResolvable: rssResult.resolvable,
+      notes,
+      demo: account.demo,
+    });
+
+    if (i < accounts.length - 1) {
+      await sleep(delayMs);
+    }
+  }
+
+  return { rows, postingsByAccountId };
+}
+
 /**
  * Live scoring pipeline: real accounts, live ATS fetches, live Haiku
  * classification. No funding/press sources yet (those land Evening 2), so
@@ -114,8 +227,17 @@ export async function runScoreDemo(): Promise<string> {
  *
  * Requires ANTHROPIC_API_KEY; throws (before any network call) if it is
  * unset so callers fail closed rather than burning a live ATS fetch first.
+ *
+ * Classifying every posting costs one live Haiku call each, so postings are
+ * capped to the `maxPostings` (default DEFAULT_MAX_POSTINGS_PER_ACCOUNT) most
+ * recent per account before classification, and a preflight line reports the
+ * total call count before spending it.
  */
-export async function runScoreLive(opts: { accounts: string; playbook: string }): Promise<string> {
+export async function runScoreLive(opts: {
+  accounts: string;
+  playbook: string;
+  maxPostings?: number;
+}): Promise<string> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error(
       'ANTHROPIC_API_KEY environment variable is not set; live scoring requires it to classify hiring postings.',
@@ -123,17 +245,37 @@ export async function runScoreLive(opts: { accounts: string; playbook: string })
   }
 
   const accounts = loadAccounts(opts.accounts);
+  const maxPostings = opts.maxPostings ?? DEFAULT_MAX_POSTINGS_PER_ACCOUNT;
 
-  const auditDeps: AuditDeps = { probeBoard, probeRss: resolveRss };
-  const auditRows = await auditAccounts(accounts, auditDeps);
+  const { rows: auditRows, postingsByAccountId } = await auditAndFetchLive(accounts);
   const auditOutput = renderAuditTable(auditRows);
+
+  const cappedByAccountId = new Map<string, Posting[]>();
+  let totalToClassify = 0;
+  let totalSkipped = 0;
+  for (const [accountId, postings] of postingsByAccountId) {
+    const capped = selectRecentPostings(postings, maxPostings);
+    cappedByAccountId.set(accountId, capped);
+    totalToClassify += capped.length;
+    totalSkipped += postings.length - capped.length;
+  }
+  const accountsToClassify = [...cappedByAccountId.values()].filter((p) => p.length > 0).length;
+
+  console.log(
+    `about to classify ${totalToClassify} postings across ${accountsToClassify} accounts (1 LLM call each)`,
+  );
+  if (totalSkipped > 0) {
+    console.log(
+      `skipped ${totalSkipped} posting(s) beyond the ${maxPostings}-per-account cap (override with --max-postings)`,
+    );
+  }
 
   const asOf = new Date().toISOString().slice(0, 10);
   const llm = liveLlm(CLASSIFY_MODEL);
   const events: SignalEvent[] = [];
   for (const account of accounts) {
-    if (!account.ats) continue;
-    const postings = await fetchPostings(account.ats.provider, account.ats.slug);
+    const postings = cappedByAccountId.get(account.id);
+    if (!postings || postings.length === 0 || !account.ats) continue;
     const classified = await classifyPostings(account.id, postings, llm, asOf, account.ats.provider);
     events.push(...classified);
   }
@@ -163,27 +305,54 @@ program
   .option('--accounts <path>', 'path to accounts JSON', DEFAULT_ACCOUNTS_PATH)
   .option('--playbook <path>', 'path to playbook JSON', DEFAULT_PLAYBOOK_PATH)
   .option('--demo', 'run against synthetic demo fixtures, no network, no API key required', false)
-  .action(async (opts: { accounts: string; playbook: string; demo?: boolean }) => {
-    if (opts.demo) {
-      if (!existsSync(DEMO_ACCOUNTS_PATH)) {
-        console.log('demo fixtures not yet available');
-        process.exitCode = 1;
+  .option(
+    '--max-postings <n>',
+    `cap postings classified per account, most recent first (live mode only)`,
+    (value: string) => Number(value),
+    DEFAULT_MAX_POSTINGS_PER_ACCOUNT,
+  )
+  .action(
+    async (opts: { accounts: string; playbook: string; demo?: boolean; maxPostings: number }) => {
+      if (opts.demo) {
+        if (opts.accounts !== DEFAULT_ACCOUNTS_PATH) {
+          console.warn('--accounts is ignored when --demo is set');
+        }
+        if (opts.playbook !== DEFAULT_PLAYBOOK_PATH) {
+          console.warn('--playbook is ignored when --demo is set');
+        }
+        if (!existsSync(DEMO_ACCOUNTS_PATH)) {
+          console.log('demo fixtures not yet available');
+          process.exitCode = 1;
+          return;
+        }
+        console.log(await runScoreDemo());
         return;
       }
-      console.log(await runScoreDemo());
-      return;
-    }
 
-    try {
-      console.log(await runScoreLive(opts));
-    } catch (err) {
-      console.error(err instanceof Error ? err.message : String(err));
-      process.exitCode = 1;
-    }
-  });
+      try {
+        console.log(await runScoreLive(opts));
+      } catch (err) {
+        console.error(err instanceof Error ? err.message : String(err));
+        process.exitCode = 1;
+      }
+    },
+  );
+
+/**
+ * True iff this module is the process entry point (invoked directly, e.g.
+ * `tsx src/cli.ts` or the built bin), as opposed to being imported for its
+ * exports (tests). Compares via pathToFileURL rather than a raw
+ * `file://${argv1}` template — the naive template silently fails to match
+ * whenever the path contains a space or other character import.meta.url
+ * percent-encodes but argv[1] doesn't, which made the CLI a silent no-op
+ * (exit 0, no output) when run from a directory with a space in its name.
+ */
+export function isMainModule(metaUrl: string, argv1: string | undefined): boolean {
+  return !!argv1 && metaUrl === pathToFileURL(argv1).href;
+}
 
 // Only run the CLI when this file is the process entry point — importing it
 // for its exports (tests) must not trigger argv parsing as a side effect.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url, process.argv[1])) {
   program.parseAsync(process.argv);
 }
