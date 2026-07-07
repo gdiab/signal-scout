@@ -1,0 +1,16 @@
+[
+  {
+    "id": "a1b2c3d4-0000-1111-2222-333344445555",
+    "text": "AI Applied Engineer",
+    "hostedUrl": "https://jobs.lever.co/acme/a1b2c3d4-0000-1111-2222-333344445555",
+    "createdAt": 1751848200000,
+    "categories": { "location": "San Francisco, CA" }
+  },
+  {
+    "id": "b2c3d4e5-1111-2222-3333-444455556666",
+    "text": "Founding GTM Engineer",
+    "hostedUrl": "https://jobs.lever.co/acme/b2c3d4e5-1111-2222-3333-444455556666",
+    "createdAt": 1747526400000,
+    "categories": { "location": "Remote" }
+  }
+]

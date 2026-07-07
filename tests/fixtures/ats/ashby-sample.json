@@ -1,0 +1,16 @@
+{
+  "jobs": [
+    {
+      "id": "e5f6a7b8-4444-5555-6666-777788889999",
+      "title": "Staff Software Engineer, Growth",
+      "jobUrl": "https://jobs.ashbyhq.com/acme/e5f6a7b8-4444-5555-6666-777788889999",
+      "location": "New York, NY"
+    },
+    {
+      "id": "f6a7b8c9-5555-6666-7777-888899990000",
+      "title": "Product Marketing Manager",
+      "jobUrl": "https://jobs.ashbyhq.com/acme/f6a7b8c9-5555-6666-7777-888899990000",
+      "location": "Remote"
+    }
+  ]
+}

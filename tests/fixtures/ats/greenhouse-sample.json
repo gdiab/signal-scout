@@ -1,0 +1,18 @@
+{
+  "jobs": [
+    {
+      "id": 4123456,
+      "title": "Senior Growth Engineer",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/4123456",
+      "updated_at": "2026-06-01T12:34:56-05:00",
+      "location": { "name": "Remote - US" }
+    },
+    {
+      "id": 4123457,
+      "title": "GTM Lead, EMEA",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/4123457",
+      "updated_at": "2026-05-15T09:00:00-05:00",
+      "location": { "name": "London, UK" }
+    }
+  ]
+}
