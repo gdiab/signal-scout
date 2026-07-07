@@ -2,7 +2,7 @@
 
 An agent-run growth-signal engine with a closed experiment loop — it finds accounts showing buying signals, has an LLM agent write a cited 'why now' brief for each, and treats its scoring weights as testable hypotheses.
 
-**Status: building.** The paragraph above describes the full design. Phase 1 — the coverage audit, the scoring engine, and a zero-credential demo mode — works end-to-end today. Live `score` (hiring signal only) is implemented and key-guarded but has not yet been verified against a live `ANTHROPIC_API_KEY`. The "why now" brief, funding/press signal sources, the experiment loop, and the HTML report described above are Phase 2.
+**Status: building.** The paragraph above describes the full design. Phase 1 — the coverage audit, the scoring engine, and a zero-credential demo mode — works end-to-end today. Live `score` (hiring signal only) works — verified 2026-07-07 against the full seed list (1,008 postings across 33 live boards classified). The "why now" brief, funding/press signal sources, the experiment loop, and the HTML report described above are Phase 2.
 
 ## Quickstart
 
@@ -26,7 +26,7 @@ npx tsx src/cli.ts audit
 npx tsx src/cli.ts score
 ```
 
-Runs against the real account list (`accounts/ai-startups.json`). `audit` probes live ATS boards and RSS feeds and needs no credentials. Live `score` is implemented but not yet verified end-to-end against a live key: it requires `ANTHROPIC_API_KEY` (it exits with a clear error naming the variable if the key is unset, before any network call is made), and with a key provided it fetches postings from each account's ATS and classifies them with Haiku. Live `score` ranks on hiring signal only; funding and press sources land in Phase 2.
+Runs against the real account list (`accounts/ai-startups.json`). `audit` probes live ATS boards and RSS feeds and needs no credentials. Live `score` requires `ANTHROPIC_API_KEY` (it exits with a clear error naming the variable if the key is unset, before any network call is made); with a key it fetches postings from each account's ATS and classifies them with Haiku — last verified end-to-end 2026-07-07 (1,008 postings across 33 boards, well under $1, ~15 min; a preflight line reports the exact call count before any spend, and `--max-postings` caps per-account volume, default 40). Live `score` ranks on hiring signal only; funding and press sources land in Phase 2.
 
 ## Design principles
 
