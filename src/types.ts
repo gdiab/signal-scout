@@ -84,4 +84,5 @@ export interface AuditRow {
   postingCount?: number;
   rssResolvable: boolean;
   notes: string[];
+  demo?: boolean;              // true when the source account was a demo fixture
 }
