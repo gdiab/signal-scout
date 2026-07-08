@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { runScoreDemo, runScoreLive, runLiftDemo, runLiftLive } from '../src/cli.js';
 
 // Guard against accidental live network anywhere in this suite: if any code
@@ -80,6 +82,41 @@ describe('runScoreDemo (end-to-end, in-process)', () => {
     expect(output).toMatch(/suggestion=inconclusive/);
     expect(output).toMatch(/⚠ small n \(with=\d+, without=\d+\) — directional at best/);
     expect(output).toContain("suggestions are proposals for the playbook's weight `status` fields");
+  });
+
+  it('when reportPath is given, writes a self-contained HTML report reusing the same computed pipeline data', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'signal-scout-report-'));
+    const reportPath = join(dir, 'report.html');
+
+    const output = await runScoreDemo({ reportPath });
+    const html = readFileSync(reportPath, 'utf-8');
+
+    // Terminal output is unaffected by the report being written.
+    expect(output).toContain('⚠ synthetic demo data — fictional companies');
+
+    expect(html.startsWith('<!doctype html>')).toBe(true);
+    expect(html).not.toContain('<script');
+    expect(html).toContain('⚠ synthetic demo data — fictional companies');
+    // At least one contribution's citation url must be a clickable href — the
+    // report renders the same lineage the terminal table does.
+    expect(html).toMatch(/href="https:\/\/\S+\.example\/\S+"/);
+    // The lift section (computed from the same recorded outcome fixture as
+    // the terminal table above) is present, not omitted.
+    expect(html).toContain('w-funding-180');
+  });
+
+  it('writes no report file when reportPath is omitted', async () => {
+    // An accidental default write would land at the CLI's default path,
+    // report.html in cwd. That file is a generated, gitignored artifact, so
+    // removing any stale one from a previous manual smoke run is safe — and
+    // makes the "nothing was created" assertion below actually bite.
+    const defaultPath = 'report.html';
+    rmSync(defaultPath, { force: true });
+
+    const output = await runScoreDemo();
+
+    expect(output).toContain('⚠ synthetic demo data — fictional companies');
+    expect(existsSync(defaultPath)).toBe(false);
   });
 });
 

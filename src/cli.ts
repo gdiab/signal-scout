@@ -6,6 +6,7 @@ import type {
   AtsProvider,
   AuditRow,
   FeedItem,
+  LiftRow,
   OutcomeEvent,
   Playbook,
   Posting,
@@ -17,6 +18,7 @@ import { fetchPostings, probeBoard, AtsHttpError, type ProbeResult } from './sou
 import { resolveRss, fetchFeedItems, type RssResult } from './sources/rss.js';
 import { auditAccounts, type AuditDeps } from './audit.js';
 import { renderAuditTable, renderScoreTable, renderReviewQueueSummary, renderBriefs, renderLiftTable } from './output/table.js';
+import { renderHtmlReport, type ReportData } from './output/report.js';
 import { classifyPostings } from './signals/hiring.js';
 import { matchArticles, type CandidateArticle } from './signals/press.js';
 import { fixtureLlm, liveLlm, CLASSIFY_MODEL, BRIEF_MODEL } from './llm.js';
@@ -27,6 +29,8 @@ import { writeBriefs } from './briefs.js';
 
 const DEFAULT_ACCOUNTS_PATH = 'accounts/ai-startups.json';
 const DEFAULT_PLAYBOOK_PATH = 'playbooks/ai-startups.json';
+/** Default path for `score --report` when the flag is given no value. */
+const DEFAULT_REPORT_PATH = 'report.html';
 const DEMO_ACCOUNTS_PATH = 'fixtures/demo/accounts.json';
 const DEMO_POSTINGS_DIR = 'fixtures/demo/postings';
 const DEMO_LLM_PATH = 'fixtures/demo/llm/hiring-classify.json';
@@ -201,19 +205,16 @@ async function computeDemoScore(): Promise<DemoScoreResult> {
 }
 
 /**
- * Computes and renders the lift section for one run: outcome rates per
- * playbook weight for accounts WITH vs WITHOUT that weight's contribution,
- * plus suggested `status` updates. LiftRow is an aggregate and carries no
- * demo flag, so the synthetic-data footer is decided here from the outcome
- * rows themselves — any demo outcome marks the whole section synthetic.
+ * Renders the lift section for one run from already-computed LiftRow[] (the
+ * caller runs computeLift once and reuses the same rows for both this text
+ * table and, when `--report` is set, the HTML report — never recomputed).
+ * LiftRow is an aggregate and carries no demo flag itself, so `demo` is
+ * decided by the caller from the outcome rows (any demo outcome marks the
+ * whole section synthetic).
  */
-export function buildLiftSection(
-  scored: ScoredAccount[],
-  outcomes: OutcomeEvent[],
-  playbook: Playbook,
-): string {
-  let section = renderLiftTable(computeLift(scored, outcomes, playbook), playbook);
-  if (outcomes.some((o) => o.demo)) {
+export function buildLiftSection(rows: LiftRow[], playbook: Playbook, demo: boolean): string {
+  let section = renderLiftTable(rows, playbook);
+  if (demo) {
     section += '\n\n⚠ synthetic demo data — fictional companies';
   }
   return section;
@@ -225,8 +226,12 @@ export function buildLiftSection(
  * from the recorded demo outcome log — the experiment loop closes in one
  * command. Returns the string rather than printing directly, so it can be
  * exercised end-to-end from tests.
+ *
+ * When `reportPath` is given, also writes the self-contained HTML report
+ * (Task 8) to that path, reusing the exact same computed values (scored,
+ * events, briefs, audit rows, lift rows) rather than recomputing anything.
  */
-export async function runScoreDemo(): Promise<string> {
+export async function runScoreDemo(opts: { reportPath?: string } = {}): Promise<string> {
   const { accounts, events, scored, playbook, reviewQueue, auditRows } = await computeDemoScore();
 
   const auditOutput = renderAuditTable(auditRows);
@@ -244,7 +249,24 @@ export async function runScoreDemo(): Promise<string> {
     output = appendSection(output, renderReviewQueueSummary(reviewQueue));
   }
   const outcomes = readJsonl<OutcomeEvent>(DEMO_EVENTS_PATH);
-  output = appendSection(output, buildLiftSection(scored, outcomes, playbook));
+  const liftRows = computeLift(scored, outcomes, playbook);
+  output = appendSection(output, buildLiftSection(liftRows, playbook, outcomes.some((o) => o.demo)));
+
+  if (opts.reportPath) {
+    const report: ReportData = {
+      generatedAt: DEMO_AS_OF,
+      demo: true,
+      auditRows,
+      scored,
+      accounts,
+      events,
+      briefs,
+      lift: liftRows,
+      playbook,
+    };
+    writeFileSync(opts.reportPath, renderHtmlReport(report));
+  }
+
   return output;
 }
 
@@ -252,7 +274,8 @@ export async function runScoreDemo(): Promise<string> {
 export async function runLiftDemo(): Promise<string> {
   const { scored, playbook } = await computeDemoScore();
   const outcomes = readJsonl<OutcomeEvent>(DEMO_EVENTS_PATH);
-  return buildLiftSection(scored, outcomes, playbook);
+  const liftRows = computeLift(scored, outcomes, playbook);
+  return buildLiftSection(liftRows, playbook, outcomes.some((o) => o.demo));
 }
 
 /**
@@ -280,8 +303,9 @@ export function runLiftLive(opts: { events: string; signals: string; playbook: s
 
   const asOf = new Date().toISOString().slice(0, 10);
   const scored = scoreAccounts(accounts, signalEvents, playbook, asOf);
+  const liftRows = computeLift(scored, outcomes, playbook);
 
-  return buildLiftSection(scored, outcomes, playbook);
+  return buildLiftSection(liftRows, playbook, outcomes.some((o) => o.demo));
 }
 
 function sleep(ms: number): Promise<void> {
@@ -423,6 +447,7 @@ export async function runScoreLive(opts: {
   maxPostings?: number;
   maxArticles?: number;
   classifyModel?: string;
+  reportPath?: string;
 }): Promise<string> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error(
@@ -532,10 +557,28 @@ export async function runScoreLive(opts: {
   // Close the loop in one command when an outcome log exists: same code path
   // as the standalone `lift` command. No log yet -> no lift section (rather
   // than an all-n/a table).
+  let liftRows: LiftRow[] | undefined;
   if (existsSync(DEFAULT_EVENTS_PATH)) {
     const outcomes = readJsonl<OutcomeEvent>(DEFAULT_EVENTS_PATH);
-    output = appendSection(output, buildLiftSection(scored, outcomes, playbook));
+    liftRows = computeLift(scored, outcomes, playbook);
+    output = appendSection(output, buildLiftSection(liftRows, playbook, outcomes.some((o) => o.demo)));
   }
+
+  if (opts.reportPath) {
+    const report: ReportData = {
+      generatedAt: asOf,
+      demo: false,
+      auditRows,
+      scored,
+      accounts,
+      events,
+      briefs,
+      lift: liftRows,
+      playbook,
+    };
+    writeFileSync(opts.reportPath, renderHtmlReport(report));
+  }
+
   return output;
 }
 
@@ -574,6 +617,10 @@ program
     'model id used for hiring-posting classification and press/funding entity matching (live mode only)',
     CLASSIFY_MODEL,
   )
+  .option(
+    '--report [path]',
+    `also write a self-contained HTML report (default ${DEFAULT_REPORT_PATH} when given no value)`,
+  )
   .action(
     async (opts: {
       accounts: string;
@@ -582,7 +629,10 @@ program
       maxPostings: number;
       maxArticles: number;
       classifyModel: string;
+      report?: string | true;
     }) => {
+      const reportPath = opts.report === undefined ? undefined : opts.report === true ? DEFAULT_REPORT_PATH : opts.report;
+
       if (opts.demo) {
         if (opts.accounts !== DEFAULT_ACCOUNTS_PATH) {
           console.warn('--accounts is ignored when --demo is set');
@@ -598,12 +648,18 @@ program
           process.exitCode = 1;
           return;
         }
-        console.log(await runScoreDemo());
+        console.log(await runScoreDemo({ reportPath }));
+        if (reportPath) {
+          console.log(`report written to ${reportPath}`);
+        }
         return;
       }
 
       try {
-        console.log(await runScoreLive(opts));
+        console.log(await runScoreLive({ ...opts, reportPath }));
+        if (reportPath) {
+          console.log(`report written to ${reportPath}`);
+        }
       } catch (err) {
         console.error(err instanceof Error ? err.message : String(err));
         process.exitCode = 1;

@@ -2,7 +2,7 @@
 
 An agent-run growth-signal engine with a closed experiment loop — it finds accounts showing buying signals, has an LLM agent write a cited 'why now' brief for each, and treats its scoring weights as testable hypotheses.
 
-**Status: building.** The paragraph above describes the full design. Phase 1 — the coverage audit, the scoring engine, and a zero-credential demo mode — works end-to-end today. Live `score` works against hiring, funding, and press signal — hiring verified 2026-07-07 against the full seed list (1,008 postings across 33 live boards classified). The "why now" briefs and the experiment loop (`lift`) work end-to-end; the HTML report described above is still landing.
+**Status: building.** The paragraph above describes the full design. Phase 1 — the coverage audit, the scoring engine, and a zero-credential demo mode — works end-to-end today. Live `score` works against hiring, funding, and press signal — hiring verified 2026-07-07 against the full seed list (1,008 postings across 33 live boards classified). The "why now" briefs, the experiment loop (`lift`), and the self-contained HTML report (`score --report`) all work end-to-end.
 
 ## Quickstart
 
@@ -14,6 +14,8 @@ npx tsx src/cli.ts score --demo
 ```
 
 `score --demo` runs the full pipeline — audit summary, hiring-posting classification, press/funding article entity-matching (both via recorded LLM responses), a ranked score table with full lineage (every point traces to a dated, cited event), cited "why now" briefs, and a lift table computed from a recorded outcome log, closing the experiment loop in one command — entirely against fictional companies in `fixtures/demo/`, with zero network calls and zero credentials required. Low-confidence press/funding matches surface in a review-queue summary rather than being silently accepted. Output is clearly labeled `⚠ synthetic demo data — fictional companies`.
+
+Add `--report [path]` (to either `score --demo` or live `score`) to also write one self-contained HTML file (`report.html` by default) with the same audit summary, ranked scores, briefs, and lift table when an outcome log is available — no server, no external assets, no JS, safe to open straight from a fresh clone.
 
 ```
 npx tsx src/cli.ts lift --demo
