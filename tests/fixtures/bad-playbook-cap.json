@@ -1,0 +1,10 @@
+{
+  "name": "bad-playbook-cap",
+  "description": "Structurally valid playbook with a non-positive-integer maxEventsPerAccount",
+  "halfLifeDays": { "hiring": 45, "funding": 90, "press": 30 },
+  "weights": [
+    { "id": "w-press", "signalType": "press", "points": 10, "maxEventsPerAccount": 0,
+      "hypothesis": "Recent press indicates external momentum", "status": "untested" }
+  ],
+  "compounds": []
+}

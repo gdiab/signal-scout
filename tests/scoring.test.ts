@@ -62,3 +62,37 @@ describe('scoreAccounts', () => {
     expect(r[0].score).toBeCloseTo(25 * Math.pow(0.5, 5/90), 5);
   });
 });
+
+const cappedPb: Playbook = {
+  ...pb,
+  weights: [
+    ...pb.weights,
+    { id: 'w-volume', signalType: 'press', points: 10, maxEventsPerAccount: 2, hypothesis: 'h', status: 'untested' },
+  ],
+};
+
+describe('scoreAccounts — caps and estimated dates', () => {
+  it('keeps only the top-K contributions for a capped weight', () => {
+    const events = ['2026-07-06', '2026-07-05', '2026-06-01'].map((d, i) =>
+      ev(`e${i}`, 'a', 'press', 'article', d));
+    const r = scoreAccounts([acct('a')], events, cappedPb, '2026-07-06');
+    const volume = r[0].contributions.filter(c => c.weightId === 'w-volume');
+    expect(volume).toHaveLength(2);
+    // the two freshest (highest-points) events survive
+    expect(volume.map(c => c.eventDate).sort()).toEqual(['2026-07-05', '2026-07-06']);
+  });
+  it('estimated-date event decays flat 0.5 and cannot activate compounds', () => {
+    const dated = { ...ev('e1', 'a', 'hiring', 'growth-eng', '2026-07-06') };
+    const undated = { ...ev('e2', 'a', 'funding', 'round', '2026-07-06'), dateEstimated: true };
+    const r = scoreAccounts([acct('a')], [dated, undated], pb, '2026-07-06');
+    const funding = r[0].contributions.find(c => c.weightId === 'w-funding')!;
+    expect(funding.decayFactor).toBe(0.5);
+    expect(funding.points).toBeCloseTo(12.5, 5);
+    expect(r[0].compoundsApplied).toHaveLength(0); // undated funding can't prove the 90d window
+  });
+  it('uncapped weights are unaffected', () => {
+    const events = [0, 1, 2, 3].map(i => ev(`e${i}`, 'a', 'hiring', 'generic-eng', '2026-07-06'));
+    const r = scoreAccounts([acct('a')], events, pb, '2026-07-06');
+    expect(r[0].contributions).toHaveLength(4);
+  });
+});

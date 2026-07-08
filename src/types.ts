@@ -23,6 +23,8 @@ export interface SignalEvent {
   confidence: number;         // 0..1
   source: string;             // e.g. 'greenhouse', 'fixture'
   demo: boolean;
+  dateEstimated?: boolean;    // true when the source had no date and `date` was filled with asOf.
+                              // Scoring applies a flat 0.5 decay and the event cannot activate compounds.
 }
 
 export interface Weight {
@@ -30,6 +32,7 @@ export interface Weight {
   signalType: SignalType;
   subtype?: string;           // matches SignalEvent.subtype when present
   points: number;
+  maxEventsPerAccount?: number; // top-K contributing events per account for this weight; unlimited when absent
   hypothesis: string;
   status: 'untested' | 'supported' | 'refuted';
 }

@@ -56,6 +56,11 @@ export function scoreAccounts(
       if (ageDays < 0) {
         decayFactor = 0;
         points = 0;
+      } else if (event.dateEstimated) {
+        // No source date to trust: assume one half-life old rather than crediting
+        // full freshness. Honest midpoint, never fresher than a dated event at age 0.
+        decayFactor = 0.5;
+        points = weight.points * 0.5;
       } else {
         const halfLife = playbook.halfLifeDays[event.type];
         decayFactor = Math.pow(0.5, ageDays / halfLife);
@@ -75,13 +80,35 @@ export function scoreAccounts(
       matched.push({ event, weight, contribution, future: ageDays < 0 });
     }
 
-    const baseScore = matched.reduce((sum, m) => sum + m.contribution.points, 0);
+    // Per-weight caps: for weights with maxEventsPerAccount, keep only the top-K
+    // contributions (by points desc) for this account; dropped ones vanish from
+    // contributions and cannot activate compounds. Skipped when no weight caps.
+    let effectiveMatched = matched;
+    const cappedWeightIds = playbook.weights
+      .filter((w) => w.maxEventsPerAccount !== undefined)
+      .map((w) => w.id);
+    if (cappedWeightIds.length > 0) {
+      const dropped = new Set<string>();
+      for (const weightId of cappedWeightIds) {
+        const forWeight = matched.filter((m) => m.weight.id === weightId);
+        const cap = forWeight[0]?.weight.maxEventsPerAccount;
+        if (cap === undefined || forWeight.length <= cap) continue;
+        const overflow = [...forWeight]
+          .sort((a, b) => b.contribution.points - a.contribution.points)
+          .slice(cap);
+        for (const m of overflow) dropped.add(m.event.id);
+      }
+      effectiveMatched = matched.filter((m) => !dropped.has(m.event.id));
+    }
+
+    const baseScore = effectiveMatched.reduce((sum, m) => sum + m.contribution.points, 0);
 
     const compoundsApplied: { compoundId: string; multiplier: number }[] = [];
     let multiplier = 1;
 
-    // Only non-future (actually contributing) events can activate compounds.
-    const contributing = matched.filter((m) => !m.future);
+    // Only non-future, dated (actually contributing) events can activate compounds —
+    // an estimated date can't prove a within-N-days window.
+    const contributing = effectiveMatched.filter((m) => !m.future && !m.event.dateEstimated);
 
     for (const compound of playbook.compounds) {
       const [idA, idB] = compound.requiresWeightIds;
@@ -114,7 +141,7 @@ export function scoreAccounts(
     results.push({
       accountId: account.id,
       score,
-      contributions: matched.map((m) => m.contribution),
+      contributions: effectiveMatched.map((m) => m.contribution),
       compoundsApplied,
     });
   }

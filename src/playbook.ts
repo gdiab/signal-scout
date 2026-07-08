@@ -42,6 +42,12 @@ function validateWeight(raw: unknown, index: number): asserts raw is Weight {
   if (typeof w.points !== 'number') {
     fail(`weights[${index}].points`, 'must be a number');
   }
+  if (w.maxEventsPerAccount !== undefined) {
+    if (typeof w.maxEventsPerAccount !== 'number' || !Number.isInteger(w.maxEventsPerAccount) || w.maxEventsPerAccount <= 0) {
+      const idSuffix = isNonEmptyString(w.id) ? ` (id "${w.id}")` : '';
+      fail(`weights[${index}].maxEventsPerAccount${idSuffix}`, 'must be a positive integer when present');
+    }
+  }
   if (!isNonEmptyString(w.hypothesis)) {
     fail(`weights[${index}].hypothesis`, 'must be a nonempty string');
   }

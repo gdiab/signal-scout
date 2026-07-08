@@ -16,4 +16,8 @@ describe('loadPlaybook', () => {
   it('rejects a file whose JSON root is not an object', () => {
     expect(() => loadPlaybook('tests/fixtures/null-playbook.json')).toThrow(/must be an object/i);
   });
+  it('rejects a weight with a non-positive-integer maxEventsPerAccount, naming the offending weight id', () => {
+    expect(() => loadPlaybook('tests/fixtures/bad-playbook-cap.json')).toThrow(/maxEventsPerAccount/i);
+    expect(() => loadPlaybook('tests/fixtures/bad-playbook-cap.json')).toThrow(/w-press/);
+  });
 });
