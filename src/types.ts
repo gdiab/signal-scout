@@ -75,7 +75,8 @@ export interface Posting {   // normalized across the 3 ATS providers
   id: string;
   title: string;
   url: string;
-  publishedAt: string;       // ISO date; if provider omits it, use asOf date
+  publishedAt: string;       // ISO date; empty when the provider omits it (e.g. Ashby) —
+                              // classifyPostings then falls back to asOf and flags dateEstimated
   location?: string;
 }
 

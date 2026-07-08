@@ -7,7 +7,7 @@ An agent-run growth-signal engine with a closed experiment loop — it finds acc
 The whole loop runs offline against fictional companies in about a second — no API key, no network:
 
 ```
-git clone <repo-url>
+git clone https://github.com/gdiab/signal-scout.git
 cd signal-scout
 npm i
 npx tsx src/cli.ts score --demo --report

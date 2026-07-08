@@ -41,6 +41,7 @@ function buildSweepPrompt(item: CandidateArticle, accounts: Account[]): string {
   return (
     `You match news articles to a fixed list of companies. Companies:\n${companies}\n` +
     `Article title: "${item.title}" Summary: "${item.summary ?? ''}" URL: ${item.url}\n` +
+    `Classify from the title and summary provided; do not attempt to access the URL. ` +
     `Reply with ONLY strict JSON: {"accountId": <id from the list or null>, "confidence": <0..1>, ` +
     `"category": "funding"|"product"|"hiring"|"other", "amount": <string or null>, "date": <"yyyy-mm-dd" or null>}. ` +
     `accountId must be null unless the article is substantively about that company.`
@@ -51,6 +52,7 @@ function buildOwnFeedPrompt(item: CandidateArticle, account: Account): string {
   return (
     `This article is from ${account.name}'s own blog/newsroom. ` +
     `Article title: "${item.title}" Summary: "${item.summary ?? ''}" URL: ${item.url}\n` +
+    `Classify from the title and summary provided; do not attempt to access the URL. ` +
     `Reply with ONLY strict JSON: {"accountId": "${account.id}", "confidence": <0..1>, ` +
     `"category": "funding"|"product"|"hiring"|"other", "amount": <string or null>, "date": <"yyyy-mm-dd" or null>}. ` +
     `Classify the article's category and extract the amount and date only if the article states them.`
@@ -182,6 +184,7 @@ export async function matchArticles(
   const events: SignalEvent[] = [];
   const reviewQueue: ReviewItem[] = [];
   const seenEventKeys = new Set<string>();
+  const seenReviewKeys = new Set<string>();
 
   for (const item of candidates) {
     const isOwnFeed = item.ownAccountId !== undefined;
@@ -235,6 +238,15 @@ export async function matchArticles(
     }
 
     if (confidence < CONFIDENCE_THRESHOLD) {
+      const reviewKey = `${accountId}::${item.url}`;
+      if (seenReviewKeys.has(reviewKey)) {
+        // Same guard as the events dedupe below: the same (accountId, url)
+        // pair can reach here twice (e.g. an account's own feed AND a
+        // general-sweep feed both surfacing the same low-confidence article)
+        // — the review queue should hold it once, not once per candidate.
+        continue;
+      }
+      seenReviewKeys.add(reviewKey);
       reviewQueue.push({
         url: item.url,
         title: item.title,

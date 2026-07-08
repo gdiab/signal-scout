@@ -167,6 +167,33 @@ describe('matchArticles', () => {
     ]);
   });
 
+  it('dedupes review-queue entries by (accountId, url): the same article surfacing from two general-sweep feeds enqueues only once', async () => {
+    // Same url twice — e.g. the same wire story picked up by two of the
+    // general-sweep feeds — both are non-own-feed candidates, so both query
+    // with the same LLM call id and both resolve to the same low-confidence
+    // match for the same account.
+    const item: CandidateArticle = {
+      title: 'Maybe about Acme?',
+      url: 'https://news.example/articles/maybe-acme-dup',
+    };
+    const { client } = stubLlm({
+      'press-match:sweep:maybe-acme-dup': JSON.stringify({
+        accountId: 'acme',
+        confidence: 0.4,
+        category: 'other',
+        amount: null,
+        date: null,
+      }),
+    });
+
+    const { events, reviewQueue } = await matchArticles([item, { ...item }], accounts, client, '2026-07-06', 'rss');
+
+    expect(events).toEqual([]);
+    expect(reviewQueue).toHaveLength(1);
+    expect(reviewQueue[0].accountId).toBe('acme');
+    expect(reviewQueue[0].url).toBe('https://news.example/articles/maybe-acme-dup');
+  });
+
   it('own-feed candidate forces the owner account id regardless of the model response, and boosts confidence to at least 0.9', async () => {
     const item: CandidateArticle = {
       title: 'From our newsroom: a product update',

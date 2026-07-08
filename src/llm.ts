@@ -47,9 +47,15 @@ export function liveLlm(model: string): LlmClient {
       if (!client) {
         client = new Anthropic();
       }
+      // Thinking is explicitly disabled here too (see generate() below): a
+      // classify-model override (e.g. --classify-model claude-sonnet-5) would
+      // otherwise run adaptive thinking by default, and thinking tokens count
+      // against the tiny 16-token budget below — enough to empty the label
+      // response entirely.
       const response = await client.messages.create({
         model,
         max_tokens: 16,
+        thinking: { type: 'disabled' },
         messages: [{ role: 'user', content: prompt }],
       });
       return extractText(response.content);

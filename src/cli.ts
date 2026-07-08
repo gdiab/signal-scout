@@ -66,6 +66,37 @@ function loadAccounts(path: string): Account[] {
   return JSON.parse(readFileSync(path, 'utf-8'));
 }
 
+/**
+ * Validates a numeric CLI flag's raw string argument: rejects anything that
+ * doesn't parse to a non-negative number (a malformed `--max-postings abc`
+ * would otherwise become Number('abc') = NaN, and `slice(0, NaN)` silently
+ * classifies zero postings AFTER the live ATS fetches already ran and were
+ * paid for). Pure and exported so it can be unit-tested without invoking
+ * Commander's argv parsing.
+ */
+export function parseNonNegativeNumber(flagName: string, raw: string): number {
+  const n = Number(raw);
+  if (Number.isNaN(n) || n < 0) {
+    throw new Error(`${flagName} must be a non-negative number, got "${raw}"`);
+  }
+  return n;
+}
+
+/** Commander option-argument parser wrapping parseNonNegativeNumber: prints
+ * the same clear, flag-naming message the rest of the CLI uses for fatal
+ * errors and exits(1) immediately — this runs synchronously during argv
+ * parsing, before any action callback (and before any network/LLM spend). */
+function cliNumberOption(flagName: string): (value: string) => number {
+  return (value: string) => {
+    try {
+      return parseNonNegativeNumber(flagName, value);
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : String(err));
+      process.exit(1);
+    }
+  };
+}
+
 /** Reads one JSON value per non-blank line — the shape used by every .jsonl file in this project. */
 function readJsonl<T>(path: string): T[] {
   return readFileSync(path, 'utf-8')
@@ -199,7 +230,9 @@ async function computeDemoScore(): Promise<DemoScoreResult> {
   const events = [...hiringEvents, ...pressEvents];
 
   const playbook = loadPlaybook(DEFAULT_PLAYBOOK_PATH);
-  const scored = scoreAccounts(accounts, events, playbook, DEMO_AS_OF);
+  // Contrast accounts appear only in the audit, never scored (SPEC) — mirrors
+  // the live path and press's own core-only matching.
+  const scored = scoreAccounts(coreAccounts, events, playbook, DEMO_AS_OF);
 
   return { accounts, events, scored, playbook, reviewQueue, auditRows };
 }
@@ -428,8 +461,12 @@ async function auditAndFetchLive(
  * Requires ANTHROPIC_API_KEY; throws (before any network call) if it is
  * unset so callers fail closed rather than burning a live ATS fetch first.
  *
- * Classifying every posting and matching every article costs one live Haiku
- * call each, so postings are capped to `maxPostings` (default
+ * Contrast accounts are audited (ATS/RSS availability) alongside core
+ * accounts but never classified or scored — the contrast group exists only
+ * to prove the audit finds real coverage gaps, not to be spent LLM calls on.
+ *
+ * Classifying every core account's postings and matching every article costs
+ * one live Haiku call each, so postings are capped to `maxPostings` (default
  * DEFAULT_MAX_POSTINGS_PER_ACCOUNT) most recent per account and articles to
  * `maxArticles` (default DEFAULT_MAX_ARTICLES_PER_FEED) most recent per feed,
  * both BEFORE any LLM spend — the two preflight lines print together, right
@@ -464,10 +501,15 @@ export async function runScoreLive(opts: {
   const { rows: auditRows, postingsByAccountId, feedUrlByAccountId } = await auditAndFetchLive(accounts);
   const auditOutput = renderAuditTable(auditRows);
 
+  // Contrast accounts appear only in the audit, never classified or scored
+  // (SPEC) — some have a reachable live board, but classifying their
+  // postings would be wasted LLM spend on accounts that can never score.
+  const coreAccountIds = new Set(coreAccounts.map((a) => a.id));
   const cappedByAccountId = new Map<string, Posting[]>();
   let totalToClassify = 0;
   let totalSkipped = 0;
   for (const [accountId, postings] of postingsByAccountId) {
+    if (!coreAccountIds.has(accountId)) continue;
     const capped = selectRecentPostings(postings, maxPostings);
     cappedByAccountId.set(accountId, capped);
     totalToClassify += capped.length;
@@ -513,7 +555,7 @@ export async function runScoreLive(opts: {
   const llm = liveLlm(classifyModel);
 
   const hiringEvents: SignalEvent[] = [];
-  for (const account of accounts) {
+  for (const account of coreAccounts) {
     const postings = cappedByAccountId.get(account.id);
     if (!postings || postings.length === 0 || !account.ats) continue;
     const classified = await classifyPostings(account.id, postings, llm, asOf, account.ats.provider);
@@ -530,7 +572,8 @@ export async function runScoreLive(opts: {
   );
 
   const playbook = loadPlaybook(opts.playbook);
-  const scored = scoreAccounts(accounts, events, playbook, asOf);
+  // Contrast accounts appear only in the audit, tagged as such, never scored (SPEC).
+  const scored = scoreAccounts(coreAccounts, events, playbook, asOf);
   const scoreOutput = renderScoreTable(scored, accounts, events);
 
   // Always reconcile: write when non-empty, remove a stale file when empty —
@@ -603,13 +646,13 @@ program
   .option(
     '--max-postings <n>',
     `cap postings classified per account, most recent first (live mode only)`,
-    (value: string) => Number(value),
+    cliNumberOption('--max-postings'),
     DEFAULT_MAX_POSTINGS_PER_ACCOUNT,
   )
   .option(
     '--max-articles <n>',
     `cap articles entity-matched per feed, most recent first (live mode only)`,
-    (value: string) => Number(value),
+    cliNumberOption('--max-articles'),
     DEFAULT_MAX_ARTICLES_PER_FEED,
   )
   .option(

@@ -79,6 +79,7 @@ export async function classifyPostings(
       confidence: 0.9,
       source,
       demo: source === 'fixture',
+      ...(posting.publishedAt ? {} : { dateEstimated: true }),
     });
   }
 

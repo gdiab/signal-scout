@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { mkdtempSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { isMainModule, selectRecentPostings, writeReviewQueue } from '../src/cli.js';
+import { isMainModule, selectRecentPostings, writeReviewQueue, parseNonNegativeNumber } from '../src/cli.js';
 import type { Posting, ReviewItem } from '../src/types.js';
 
 describe('isMainModule', () => {
@@ -57,6 +57,28 @@ describe('selectRecentPostings', () => {
     const copy = [...postings];
     selectRecentPostings(postings, 1);
     expect(postings).toEqual(copy);
+  });
+});
+
+describe('parseNonNegativeNumber', () => {
+  it('parses a valid non-negative integer string', () => {
+    expect(parseNonNegativeNumber('--max-postings', '40')).toBe(40);
+  });
+
+  it('accepts zero', () => {
+    expect(parseNonNegativeNumber('--max-articles', '0')).toBe(0);
+  });
+
+  it('throws naming the flag and the raw value for a non-numeric string', () => {
+    expect(() => parseNonNegativeNumber('--max-postings', 'abc')).toThrow(
+      /--max-postings must be a non-negative number, got "abc"/,
+    );
+  });
+
+  it('throws for a negative number', () => {
+    expect(() => parseNonNegativeNumber('--max-articles', '-5')).toThrow(
+      /--max-articles must be a non-negative number, got "-5"/,
+    );
   });
 });
 

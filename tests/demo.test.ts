@@ -59,6 +59,15 @@ describe('runScoreDemo (end-to-end, in-process)', () => {
     expect(compoundLines).toHaveLength(1);
     expect(compoundLines[0]).toContain('c-funded-and-hiring-growth');
 
+    // Contrast accounts appear only in the audit, never in the ranked score
+    // table (SPEC) — they carry no events and would otherwise show as
+    // wasted-looking 0.00 rows.
+    expect(output).toContain('meridian-imaging');
+    expect(output).toContain('cartway-freight');
+    const scoreSectionStart = lines.findIndex((l) => rankLineRegex.test(l));
+    const scoreSectionLines = lines.slice(scoreSectionStart, scoreSectionStart + rankLines.length);
+    expect(scoreSectionLines.join('\n')).not.toMatch(/Meridian Imaging Partners|Cartway Freight Solutions/);
+
     // Funding now flows through the same matchArticles pipeline live mode
     // uses (fixtures/demo/feeds/*.json -> press-match.json), not a pre-made
     // signals.jsonl — at least one funding ('round' subtype) contribution

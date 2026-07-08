@@ -99,13 +99,23 @@ describe('classifyPostings', () => {
     ]);
   });
 
-  it('substitutes asOf for empty publishedAt when the label is not other', async () => {
+  it('substitutes asOf for empty publishedAt when the label is not other, and flags dateEstimated:true', async () => {
     const { client } = stubLlm({ 'acme:p3': 'ai-eng' });
 
     const events = await classifyPostings('acme', [postings[2]], client, '2026-07-06', 'greenhouse');
 
     expect(events).toHaveLength(1);
     expect(events[0].date).toBe('2026-07-06');
+    expect(events[0].dateEstimated).toBe(true);
+  });
+
+  it('does not set dateEstimated when the posting has a real publishedAt', async () => {
+    const { client } = stubLlm({ 'acme:p1': 'growth-eng' });
+
+    const events = await classifyPostings('acme', [postings[0]], client, '2026-07-06', 'greenhouse');
+
+    expect(events).toHaveLength(1);
+    expect(events[0].dateEstimated).toBeUndefined();
   });
 
   it('sends one classify call per posting, sequentially, with the composite id and a prompt naming title+location', async () => {

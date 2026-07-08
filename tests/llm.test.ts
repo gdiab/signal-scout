@@ -39,4 +39,17 @@ describe('liveLlm generate()', () => {
     expect(request.model).toBe('claude-sonnet-5');
     expect(request.max_tokens).toBe(1100);
   });
+
+  it('sends thinking: { type: "disabled" } on every classify() call too — a --classify-model override can point at a thinking-by-default model', async () => {
+    const { liveLlm } = await import('../src/llm.js');
+    const llm = liveLlm('claude-sonnet-5');
+
+    await llm.classify({ id: 'acme:p1', prompt: 'classify this posting' });
+
+    expect(createMock).toHaveBeenCalledTimes(1);
+    const request = createMock.mock.calls[0][0];
+    expect(request.thinking).toEqual({ type: 'disabled' });
+    expect(request.model).toBe('claude-sonnet-5');
+    expect(request.max_tokens).toBe(16);
+  });
 });

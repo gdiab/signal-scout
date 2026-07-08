@@ -43,6 +43,22 @@ function renderBanner(): string {
   return `<p class="banner">${esc(DEMO_BANNER)}</p>`;
 }
 
+/** Matches only the two schemes safe to render as a clickable link. Anything
+ * else (javascript:, data:, etc.) is rendered as escaped plain text instead —
+ * event/contribution URLs come from LLM-extracted or ATS-provided data, never
+ * validated as http(s) upstream, so this is the last line of defense against
+ * an href that executes script when clicked. */
+const SAFE_URL_SCHEME = /^https?:\/\//i;
+
+/** Renders a citation URL as a clickable `<a href>` only when it matches
+ * `SAFE_URL_SCHEME`; otherwise renders it as escaped plain text. */
+function renderUrlLink(url: string): string {
+  if (!SAFE_URL_SCHEME.test(url)) {
+    return esc(url);
+  }
+  return `<a href="${esc(url)}">${esc(url)}</a>`;
+}
+
 /** Per-group ATS/RSS coverage percentages plus one row per account — the HTML
  * sibling of renderAuditTable in output/table.ts, same source data. */
 function renderAuditSection(rows: AuditRow[]): string {
@@ -110,7 +126,7 @@ function renderScoresSection(scored: ScoredAccount[], accounts: Account[], event
           const subtype = event?.subtype ?? '?';
           return (
             `<li>${c.points.toFixed(2)} pts (decay&times;${c.decayFactor.toFixed(2)}) ${esc(subtype)} — ` +
-            `${esc(c.eventDate)} — <a href="${esc(c.eventUrl)}">${esc(c.eventUrl)}</a></li>`
+            `${esc(c.eventDate)} — ${renderUrlLink(c.eventUrl)}</li>`
           );
         })
         .join('\n');

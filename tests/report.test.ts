@@ -181,6 +181,24 @@ describe('renderHtmlReport', () => {
     }
   });
 
+  it('renders a non-http(s) contribution URL (e.g. javascript:) as escaped text, never as a clickable href', () => {
+    const scored = baseScored();
+    scored[0] = {
+      ...scored[0],
+      contributions: [
+        {
+          ...scored[0].contributions[0],
+          eventUrl: 'javascript:alert(1)',
+        },
+      ],
+    };
+    const events: SignalEvent[] = [{ ...baseEvents()[0], url: 'javascript:alert(1)' }];
+    const html = renderHtmlReport(baseData({ scored, events }));
+    expect(html).not.toContain('<a href="javascript:alert(1)">');
+    expect(html).not.toMatch(/href="javascript:/i);
+    expect(html).toContain('javascript:alert(1)');
+  });
+
   it('omits the lift section entirely when lift is undefined', () => {
     const html = renderHtmlReport(baseData({ lift: undefined }));
     expect(html).not.toMatch(/lift/i);
