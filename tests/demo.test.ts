@@ -56,6 +56,21 @@ describe('runScoreDemo (end-to-end, in-process)', () => {
     const compoundLines = lines.filter((l) => /compound ×/.test(l));
     expect(compoundLines).toHaveLength(1);
     expect(compoundLines[0]).toContain('c-funded-and-hiring-growth');
+
+    // Funding now flows through the same matchArticles pipeline live mode
+    // uses (fixtures/demo/feeds/*.json -> press-match.json), not a pre-made
+    // signals.jsonl — at least one funding ('round' subtype) contribution
+    // line must be present, with a .example lineage url.
+    const fundingLines = contributionLines.filter((l) => /\bround\b/.test(l));
+    expect(fundingLines.length).toBeGreaterThan(0);
+    for (const line of fundingLines) {
+      expect(line).toMatch(/https:\/\/\S+\.example\/\S+/);
+    }
+
+    // The one low-confidence sweep match must surface in a review-queue
+    // summary, never silently matched (ADR 0001).
+    expect(output).toContain('review queue (needs a human):');
+    expect(output).toMatch(/\? .+ — loomwright \(0\.45\)/);
   });
 });
 
@@ -73,7 +88,7 @@ describe('runScoreLive key guard', () => {
 });
 
 describe('demo fixture integrity', () => {
-  const accounts: Array<{ id: string; domain: string; rss?: string; demo?: boolean }> = JSON.parse(
+  const accounts: Array<{ id: string; domain: string; group: string; rss?: string; demo?: boolean }> = JSON.parse(
     readFileSync('fixtures/demo/accounts.json', 'utf-8'),
   );
 
@@ -104,13 +119,28 @@ describe('demo fixture integrity', () => {
     }
   });
 
-  it('every signal event in signals.jsonl is demo:true with a .example url host', () => {
-    const raw = readFileSync('fixtures/demo/signals.jsonl', 'utf-8').trim();
-    const events = raw.split('\n').map((line) => JSON.parse(line));
-    expect(events.length).toBeGreaterThan(0);
-    for (const event of events) {
-      expect(event.demo).toBe(true);
-      const host = new URL(event.url).host;
+  it('every core account has a feeds fixture, and every item in it has a .example url host', () => {
+    const coreAccounts = accounts.filter((a) => a.group === 'core');
+    expect(coreAccounts.length).toBeGreaterThan(0);
+    for (const account of coreAccounts) {
+      const items: Array<{ url: string }> = JSON.parse(
+        readFileSync(`fixtures/demo/feeds/${account.id}.json`, 'utf-8'),
+      );
+      expect(items.length).toBeGreaterThan(0);
+      for (const item of items) {
+        const host = new URL(item.url).host;
+        expect(host.endsWith('.example')).toBe(true);
+      }
+    }
+  });
+
+  it('general-sweep.json items all resolve to a .example url host', () => {
+    const items: Array<{ url: string }> = JSON.parse(
+      readFileSync('fixtures/demo/feeds/general-sweep.json', 'utf-8'),
+    );
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) {
+      const host = new URL(item.url).host;
       expect(host.endsWith('.example')).toBe(true);
     }
   });

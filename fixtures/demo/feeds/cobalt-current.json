@@ -1,0 +1,14 @@
+[
+  {
+    "title": "Cobalt Current Ships Real-Time Pipeline Debugging",
+    "url": "https://cobaltcurrent.example/blog/pipeline-debugging",
+    "date": "2026-06-05",
+    "summary": "A new inspector lets engineers step through streaming pipeline runs event by event."
+  },
+  {
+    "title": "Cobalt Current Hits 500 Team Milestone",
+    "url": "https://cobaltcurrent.example/blog/500-teams-milestone",
+    "date": "2026-05-12",
+    "summary": "The company crossed 500 paying teams on its data pipeline platform."
+  }
+]

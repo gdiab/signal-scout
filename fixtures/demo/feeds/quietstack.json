@@ -1,0 +1,14 @@
+[
+  {
+    "title": "Quietstack Featured in Industry Roundup of Fast-Growing Tooling Startups",
+    "url": "https://quietstack.example/blog/industry-roundup-feature",
+    "date": "2026-06-20",
+    "summary": "Quietstack was named alongside several peers in a roundup of fast-growing developer-tooling startups."
+  },
+  {
+    "title": "Quietstack Adds Native Support for Config Diffing",
+    "url": "https://quietstack.example/blog/config-diffing-launch",
+    "date": "2026-06-01",
+    "summary": "A new diffing view highlights config drift between environments."
+  }
+]

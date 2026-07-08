@@ -1,0 +1,14 @@
+[
+  {
+    "title": "Bramblewire Systems Releases Its Public Status Page",
+    "url": "https://bramblewire.example/blog/public-status-page",
+    "date": "2026-06-12",
+    "summary": "The new status page publishes real-time uptime and incident history for every region."
+  },
+  {
+    "title": "Bramblewire Systems Marks Its Third Year of Uptime Guarantees",
+    "url": "https://bramblewire.example/blog/three-years-uptime",
+    "date": "2026-05-22",
+    "summary": "A retrospective on three years of published uptime SLAs across the platform."
+  }
+]

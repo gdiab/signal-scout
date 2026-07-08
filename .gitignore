@@ -8,3 +8,5 @@ playbooks/local/
 .env*
 report.html
 events.jsonl
+review-queue.jsonl
+signal-events.jsonl

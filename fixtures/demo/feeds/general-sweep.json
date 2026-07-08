@@ -1,0 +1,38 @@
+[
+  {
+    "title": "Bramblewire Systems Closes $9M Seed Round",
+    "url": "https://news.example/bramblewire-systems-seed-round",
+    "date": "2026-06-18",
+    "summary": "A seed round for infrastructure-monitoring startup Bramblewire Systems, reported by a general tech-news outlet."
+  },
+  {
+    "title": "Cobalt Current's New API Gateway Gets Coverage From a Developer Newsletter",
+    "url": "https://news.example/cobalt-current-api-gateway-coverage",
+    "date": "2026-06-28",
+    "summary": "A developer-focused newsletter covers Cobalt Current's newly launched API gateway."
+  },
+  {
+    "title": "Confusion Grows Around Similarly Named Workflow Startups Including Loomwright",
+    "url": "https://news.example/workflow-startup-name-confusion",
+    "date": "2026-06-14",
+    "summary": "A roundup piece lumps several similarly-branded workflow-automation startups together, mentioning Loomwright only in passing."
+  },
+  {
+    "title": "Mosskettle Raises Fresh Funding to Expand Bookkeeping Automation",
+    "url": "https://mosskettle.example/press/funding-announcement",
+    "date": "2026-06-19",
+    "summary": "Bookkeeping-automation startup Mosskettle announced a new funding round."
+  },
+  {
+    "title": "Tanglecove Launches New Analytics Suite",
+    "url": "https://tanglecove.example/blog/analytics-suite-launch",
+    "date": "2026-06-05",
+    "summary": "Analytics startup Tanglecove announced a new self-serve reporting suite."
+  },
+  {
+    "title": "Galehollow Systems Expands Into European Market",
+    "url": "https://galehollow.example/news/european-expansion",
+    "date": "2026-05-30",
+    "summary": "Galehollow Systems announced its first European office as part of an international expansion."
+  }
+]

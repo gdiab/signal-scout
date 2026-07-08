@@ -2,7 +2,7 @@
 
 An agent-run growth-signal engine with a closed experiment loop — it finds accounts showing buying signals, has an LLM agent write a cited 'why now' brief for each, and treats its scoring weights as testable hypotheses.
 
-**Status: building.** The paragraph above describes the full design. Phase 1 — the coverage audit, the scoring engine, and a zero-credential demo mode — works end-to-end today. Live `score` (hiring signal only) works — verified 2026-07-07 against the full seed list (1,008 postings across 33 live boards classified). The "why now" brief, funding/press signal sources, the experiment loop, and the HTML report described above are Phase 2.
+**Status: building.** The paragraph above describes the full design. Phase 1 — the coverage audit, the scoring engine, and a zero-credential demo mode — works end-to-end today. Live `score` works against hiring, funding, and press signal — hiring verified 2026-07-07 against the full seed list (1,008 postings across 33 live boards classified). The "why now" brief, the experiment loop, and the HTML report described above are still landing.
 
 ## Quickstart
 
@@ -13,7 +13,7 @@ npm i
 npx tsx src/cli.ts score --demo
 ```
 
-`score --demo` runs the full pipeline — audit summary, hiring-posting classification (recorded LLM responses) merged with pre-made funding/press signal events, and a ranked score table with full lineage (every point traces to a dated, cited event) — entirely against fictional companies in `fixtures/demo/`, with zero network calls and zero credentials required. Output is clearly labeled `⚠ synthetic demo data — fictional companies`.
+`score --demo` runs the full pipeline — audit summary, hiring-posting classification, press/funding article entity-matching (both via recorded LLM responses), and a ranked score table with full lineage (every point traces to a dated, cited event) — entirely against fictional companies in `fixtures/demo/`, with zero network calls and zero credentials required. Low-confidence press/funding matches surface in a review-queue summary rather than being silently accepted. Output is clearly labeled `⚠ synthetic demo data — fictional companies`.
 
 ```
 npx tsx src/cli.ts audit --demo
@@ -26,7 +26,7 @@ npx tsx src/cli.ts audit
 npx tsx src/cli.ts score
 ```
 
-Runs against the real account list (`accounts/ai-startups.json`). `audit` probes live ATS boards and RSS feeds and needs no credentials. Live `score` requires `ANTHROPIC_API_KEY` (it exits with a clear error naming the variable if the key is unset, before any network call is made); with a key it fetches postings from each account's ATS and classifies them with Haiku — last verified end-to-end 2026-07-07 (1,008 postings across 33 boards, well under $1, ~15 min; a preflight line reports the exact call count before any spend, and `--max-postings` caps per-account volume, default 40). Live `score` ranks on hiring signal only; funding and press sources land in Phase 2.
+Runs against the real account list (`accounts/ai-startups.json`). `audit` probes live ATS boards and RSS feeds and needs no credentials. Live `score` requires `ANTHROPIC_API_KEY` (it exits with a clear error naming the variable if the key is unset, before any network call is made); with a key it fetches postings from each account's ATS and classifies them with Haiku, and fetches each account's own RSS feed plus the general news feeds in `feeds/general.json` and entity-matches the articles against the account list — hiring last verified end-to-end 2026-07-07 (1,008 postings across 33 boards, well under $1, ~15 min). Preflight lines report the exact call counts before any spend, `--max-postings` caps postings classified per account (default 40) and `--max-articles` caps articles matched per feed (default 20). Low-confidence press/funding matches are written to `review-queue.jsonl` instead of being silently accepted; every SignalEvent produced is written to `signal-events.jsonl`.
 
 ## Design principles
 

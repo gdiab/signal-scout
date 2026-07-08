@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { pathToFileURL } from 'node:url';
-import { isMainModule, selectRecentPostings } from '../src/cli.js';
-import type { Posting } from '../src/types.js';
+import { mkdtempSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { isMainModule, selectRecentPostings, writeReviewQueue } from '../src/cli.js';
+import type { Posting, ReviewItem } from '../src/types.js';
 
 describe('isMainModule', () => {
   it('matches when the entry-point path contains a space (regression: import.meta.url percent-encodes spaces, argv[1] does not)', () => {
@@ -54,5 +57,46 @@ describe('selectRecentPostings', () => {
     const copy = [...postings];
     selectRecentPostings(postings, 1);
     expect(postings).toEqual(copy);
+  });
+});
+
+describe('writeReviewQueue', () => {
+  const item: ReviewItem = {
+    url: 'https://news.example/articles/maybe',
+    title: 'Maybe a match',
+    accountId: 'acme',
+    confidence: 0.45,
+    reason: 'low-confidence match (0.45 < 0.6)',
+  };
+
+  it('writes one JSON line per item, overwriting any previous content', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'review-queue-'));
+    const path = join(dir, 'review-queue.jsonl');
+    writeFileSync(path, 'stale content from a previous run\n');
+
+    writeReviewQueue(path, [item, { ...item, accountId: 'globex' }]);
+
+    const lines = readFileSync(path, 'utf-8').trim().split('\n');
+    expect(lines).toHaveLength(2);
+    expect(JSON.parse(lines[0])).toEqual(item);
+    expect(JSON.parse(lines[1]).accountId).toBe('globex');
+  });
+
+  it('removes a stale file from a previous run when this run\'s queue is empty', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'review-queue-'));
+    const path = join(dir, 'review-queue.jsonl');
+    writeFileSync(path, JSON.stringify(item) + '\n'); // previous run's queue
+
+    writeReviewQueue(path, []);
+
+    expect(existsSync(path)).toBe(false);
+  });
+
+  it('is a no-op when the queue is empty and no file exists', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'review-queue-'));
+    const path = join(dir, 'review-queue.jsonl');
+
+    expect(() => writeReviewQueue(path, [])).not.toThrow();
+    expect(existsSync(path)).toBe(false);
   });
 });

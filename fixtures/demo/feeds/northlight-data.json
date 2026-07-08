@@ -1,0 +1,20 @@
+[
+  {
+    "title": "Northlight Data Announces $32M Series B",
+    "url": "https://northlightdata.example/blog/series-b-funding",
+    "date": "2026-05-15",
+    "summary": "Northlight Data closed a $32M Series B to expand its streaming data infrastructure."
+  },
+  {
+    "title": "Northlight Data Opens Beta for Streaming Ingestion",
+    "url": "https://northlightdata.example/blog/streaming-ingestion-beta",
+    "date": "2026-06-08",
+    "summary": "The beta adds a new streaming ingestion path alongside the existing batch pipeline."
+  },
+  {
+    "title": "Northlight Data Publishes Annual Data Trust Report",
+    "url": "https://northlightdata.example/blog/data-trust-report",
+    "date": "2026-05-28",
+    "summary": "The report details retention, access controls, and audit practices across the platform."
+  }
+]

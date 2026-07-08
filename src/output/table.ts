@@ -1,4 +1,4 @@
-import type { Account, AuditRow, ScoredAccount, SignalEvent } from '../types.js';
+import type { Account, AuditRow, ReviewItem, ScoredAccount, SignalEvent } from '../types.js';
 
 const GROUPS: Array<AuditRow['group']> = ['core', 'contrast'];
 const GROUP_LABEL_WIDTH = 8;
@@ -117,5 +117,20 @@ export function renderScoreTable(
     lines.push('⚠ synthetic demo data — fictional companies');
   }
 
+  return lines.join('\n');
+}
+
+/**
+ * Renders the low-confidence press-match review queue: a fixed header
+ * followed by one line per item, in input order — `? title — accountId
+ * (confidence) reason`. Never silently matched (ADR 0001): this is the
+ * human-facing surface for everything matchArticles routed here instead of
+ * emitting an event.
+ */
+export function renderReviewQueueSummary(items: ReviewItem[]): string {
+  const lines = ['review queue (needs a human):'];
+  for (const item of items) {
+    lines.push(`? ${item.title} — ${item.accountId} (${item.confidence}) ${item.reason}`);
+  }
   return lines.join('\n');
 }

@@ -1,0 +1,29 @@
+{
+  "press-match:fernglass-labs:series-a-funding": "{\"accountId\": \"fernglass-labs\", \"confidence\": 0.95, \"category\": \"funding\", \"amount\": \"$18M\", \"date\": \"2026-06-01\"}",
+  "press-match:fernglass-labs:self-serve-onboarding": "{\"accountId\": \"fernglass-labs\", \"confidence\": 0.9, \"category\": \"product\", \"amount\": null, \"date\": \"2026-06-22\"}",
+  "press-match:fernglass-labs:transparency-report": "{\"accountId\": \"fernglass-labs\", \"confidence\": 0.85, \"category\": \"other\", \"amount\": null, \"date\": \"2026-05-18\"}",
+
+  "press-match:loomwright:workflow-templates": "{\"accountId\": \"loomwright\", \"confidence\": 0.9, \"category\": \"product\", \"amount\": null, \"date\": \"2026-06-25\"}",
+  "press-match:loomwright:rising-tools-vendor": "{\"accountId\": \"loomwright\", \"confidence\": 0.85, \"category\": \"other\", \"amount\": null, \"date\": \"2026-06-10\"}",
+  "press-match:loomwright:gtm-track-hiring": "{\"accountId\": \"loomwright\", \"confidence\": 0.85, \"category\": \"hiring\", \"amount\": null, \"date\": \"2026-05-20\"}",
+
+  "press-match:cobalt-current:pipeline-debugging": "{\"accountId\": \"cobalt-current\", \"confidence\": 0.9, \"category\": \"product\", \"amount\": null, \"date\": \"2026-06-05\"}",
+  "press-match:cobalt-current:500-teams-milestone": "{\"accountId\": \"cobalt-current\", \"confidence\": 0.85, \"category\": \"other\", \"amount\": null, \"date\": \"2026-05-12\"}",
+
+  "press-match:northlight-data:series-b-funding": "{\"accountId\": \"northlight-data\", \"confidence\": 0.95, \"category\": \"funding\", \"amount\": \"$32M\", \"date\": \"2026-05-15\"}",
+  "press-match:northlight-data:streaming-ingestion-beta": "{\"accountId\": \"northlight-data\", \"confidence\": 0.9, \"category\": \"product\", \"amount\": null, \"date\": \"2026-06-08\"}",
+  "press-match:northlight-data:data-trust-report": "{\"accountId\": \"northlight-data\", \"confidence\": 0.85, \"category\": \"other\", \"amount\": null, \"date\": \"2026-05-28\"}",
+
+  "press-match:quietstack:industry-roundup-feature": "{\"accountId\": \"quietstack\", \"confidence\": 0.85, \"category\": \"other\", \"amount\": null, \"date\": \"2026-06-20\"}",
+  "press-match:quietstack:config-diffing-launch": "{\"accountId\": \"quietstack\", \"confidence\": 0.9, \"category\": \"product\", \"amount\": null, \"date\": \"2026-06-01\"}",
+
+  "press-match:bramblewire-systems:public-status-page": "{\"accountId\": \"bramblewire-systems\", \"confidence\": 0.9, \"category\": \"product\", \"amount\": null, \"date\": \"2026-06-12\"}",
+  "press-match:bramblewire-systems:three-years-uptime": "{\"accountId\": \"bramblewire-systems\", \"confidence\": 0.85, \"category\": \"other\", \"amount\": null, \"date\": \"2026-05-22\"}",
+
+  "press-match:sweep:bramblewire-systems-seed-round": "{\"accountId\": \"bramblewire-systems\", \"confidence\": 0.82, \"category\": \"funding\", \"amount\": \"$9M\", \"date\": \"2026-06-18\"}",
+  "press-match:sweep:cobalt-current-api-gateway-coverage": "{\"accountId\": \"cobalt-current\", \"confidence\": 0.78, \"category\": \"product\", \"amount\": null, \"date\": null}",
+  "press-match:sweep:workflow-startup-name-confusion": "{\"accountId\": \"loomwright\", \"confidence\": 0.45, \"category\": \"other\", \"amount\": null, \"date\": null}",
+  "press-match:sweep:funding-announcement": "{\"accountId\": null, \"confidence\": 0.1, \"category\": \"other\", \"amount\": null, \"date\": null}",
+  "press-match:sweep:analytics-suite-launch": "{\"accountId\": null, \"confidence\": 0.15, \"category\": \"other\", \"amount\": null, \"date\": null}",
+  "press-match:sweep:european-expansion": "{\"accountId\": null, \"confidence\": 0.1, \"category\": \"other\", \"amount\": null, \"date\": null}"
+}

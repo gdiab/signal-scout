@@ -1,0 +1,20 @@
+[
+  {
+    "title": "Fernglass Labs Raises $18M Series A to Expand Growth Engineering Team",
+    "url": "https://fernglass.example/blog/series-a-funding",
+    "date": "2026-06-01",
+    "summary": "Fernglass Labs announced an $18M Series A led by a growth-stage fund, earmarked for expanding the growth engineering and activation teams."
+  },
+  {
+    "title": "Fernglass Labs Ships New Self-Serve Onboarding Flow",
+    "url": "https://fernglass.example/blog/self-serve-onboarding",
+    "date": "2026-06-22",
+    "summary": "A rebuilt onboarding flow cuts time-to-first-value for new workspace signups."
+  },
+  {
+    "title": "Fernglass Labs Publishes Its First Transparency Report",
+    "url": "https://fernglass.example/blog/transparency-report",
+    "date": "2026-05-18",
+    "summary": "The report covers uptime, incident response times, and data-handling practices for the past two quarters."
+  }
+]
