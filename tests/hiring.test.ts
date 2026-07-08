@@ -196,6 +196,20 @@ describe('classifyPostings', () => {
     expect(overlapped).toBe(false);
     expect(events).toHaveLength(2);
   });
+
+  it('demotes first-gtm to gtm-expansion when an account has more than 2', async () => {
+    const postings = [1, 2, 3].map(i => ({ id: `p${i}`, title: `GTM role ${i}`, url: `https://x.example/p${i}`, publishedAt: '2026-07-01' }));
+    const llm = { classify: async () => 'first-gtm' };
+    const events = await classifyPostings('a', postings, llm, '2026-07-06', 'fixture');
+    expect(events).toHaveLength(3);
+    expect(events.every(e => e.subtype === 'gtm-expansion')).toBe(true);
+  });
+  it('keeps first-gtm when an account has 2 or fewer', async () => {
+    const postings = [1, 2].map(i => ({ id: `p${i}`, title: `GTM role ${i}`, url: `https://x.example/p${i}`, publishedAt: '2026-07-01' }));
+    const llm = { classify: async () => 'first-gtm' };
+    const events = await classifyPostings('a', postings, llm, '2026-07-06', 'fixture');
+    expect(events.every(e => e.subtype === 'first-gtm')).toBe(true);
+  });
 });
 
 describe('fixtureLlm', () => {

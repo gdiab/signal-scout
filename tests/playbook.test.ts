@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { loadPlaybook } from '../src/playbook.js';
 
 describe('loadPlaybook', () => {
-  it('loads the ai-startups playbook with 6 weights and 1 compound', () => {
+  it('loads the ai-startups playbook with 7 weights and 1 compound', () => {
     const pb = loadPlaybook('playbooks/ai-startups.json');
     expect(pb.name).toBe('ai-startups');
-    expect(pb.weights).toHaveLength(6);
+    expect(pb.weights).toHaveLength(7);
     expect(pb.compounds).toHaveLength(1);
     expect(pb.weights.every(w => w.hypothesis.length > 0)).toBe(true);
     expect(pb.weights.every(w => ['untested','supported','refuted'].includes(w.status))).toBe(true);

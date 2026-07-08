@@ -82,5 +82,20 @@ export async function classifyPostings(
     });
   }
 
+  // A per-posting classifier can't see the account's overall hiring state, so
+  // it labels every open GTM role 'first-gtm' — a company with a full GTM org
+  // (many open GTM roles) would otherwise score as if each one were the
+  // first hire, the opposite of the "first GTM hire" hypothesis. Demote at
+  // the account level, after the loop: 3+ first-gtm postings means the motion
+  // is already staffed, so relabel all of them 'gtm-expansion'.
+  const firstGtmCount = events.filter((e) => e.subtype === 'first-gtm').length;
+  if (firstGtmCount > 2) {
+    for (const event of events) {
+      if (event.subtype === 'first-gtm') {
+        event.subtype = 'gtm-expansion';
+      }
+    }
+  }
+
   return events;
 }

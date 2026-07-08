@@ -237,6 +237,7 @@ export async function runScoreLive(opts: {
   accounts: string;
   playbook: string;
   maxPostings?: number;
+  classifyModel?: string;
 }): Promise<string> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error(
@@ -246,6 +247,7 @@ export async function runScoreLive(opts: {
 
   const accounts = loadAccounts(opts.accounts);
   const maxPostings = opts.maxPostings ?? DEFAULT_MAX_POSTINGS_PER_ACCOUNT;
+  const classifyModel = opts.classifyModel ?? CLASSIFY_MODEL;
 
   const { rows: auditRows, postingsByAccountId } = await auditAndFetchLive(accounts);
   const auditOutput = renderAuditTable(auditRows);
@@ -271,7 +273,7 @@ export async function runScoreLive(opts: {
   }
 
   const asOf = new Date().toISOString().slice(0, 10);
-  const llm = liveLlm(CLASSIFY_MODEL);
+  const llm = liveLlm(classifyModel);
   const events: SignalEvent[] = [];
   for (const account of accounts) {
     const postings = cappedByAccountId.get(account.id);
@@ -311,14 +313,28 @@ program
     (value: string) => Number(value),
     DEFAULT_MAX_POSTINGS_PER_ACCOUNT,
   )
+  .option(
+    '--classify-model <model>',
+    'model id used for hiring-posting classification (live mode only)',
+    CLASSIFY_MODEL,
+  )
   .action(
-    async (opts: { accounts: string; playbook: string; demo?: boolean; maxPostings: number }) => {
+    async (opts: {
+      accounts: string;
+      playbook: string;
+      demo?: boolean;
+      maxPostings: number;
+      classifyModel: string;
+    }) => {
       if (opts.demo) {
         if (opts.accounts !== DEFAULT_ACCOUNTS_PATH) {
           console.warn('--accounts is ignored when --demo is set');
         }
         if (opts.playbook !== DEFAULT_PLAYBOOK_PATH) {
           console.warn('--playbook is ignored when --demo is set');
+        }
+        if (opts.classifyModel !== CLASSIFY_MODEL) {
+          console.warn('--classify-model is ignored when --demo is set');
         }
         if (!existsSync(DEMO_ACCOUNTS_PATH)) {
           console.log('demo fixtures not yet available');
