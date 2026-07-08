@@ -1,4 +1,4 @@
-import type { Account, AuditRow, ReviewItem, ScoredAccount, SignalEvent } from '../types.js';
+import type { Account, AuditRow, Brief, ReviewItem, ScoredAccount, SignalEvent } from '../types.js';
 
 const GROUPS: Array<AuditRow['group']> = ['core', 'contrast'];
 const GROUP_LABEL_WIDTH = 8;
@@ -116,6 +116,36 @@ export function renderScoreTable(
     lines.push('');
     lines.push('⚠ synthetic demo data — fictional companies');
   }
+
+  return lines.join('\n');
+}
+
+/**
+ * Renders each brief as an account name header line followed by its text,
+ * indented, then a `⚠ uncited claims` warning line when the brief has any
+ * uncited URL or no citations at all (citedUrls empty) — the human-facing
+ * surface for the citation post-validation writeBriefs already performed.
+ * One blank line separates entries; input order is preserved (writeBriefs
+ * already ranks by score).
+ */
+export function renderBriefs(briefs: Brief[], accounts: Account[]): string {
+  const accountById = new Map(accounts.map((a) => [a.id, a]));
+  const lines: string[] = [];
+
+  briefs.forEach((brief, index) => {
+    const account = accountById.get(brief.accountId);
+    const name = account?.name ?? brief.accountId;
+    lines.push(name);
+    for (const textLine of brief.text.split('\n')) {
+      lines.push(`    ${textLine}`);
+    }
+    if (brief.uncitedUrls.length > 0 || brief.citedUrls.length === 0) {
+      lines.push('    ⚠ uncited claims');
+    }
+    if (index < briefs.length - 1) {
+      lines.push('');
+    }
+  });
 
   return lines.join('\n');
 }

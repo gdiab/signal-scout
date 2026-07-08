@@ -5,12 +5,13 @@ import type { Account, AtsProvider, AuditRow, FeedItem, Posting, ReviewItem, Sig
 import { fetchPostings, probeBoard, AtsHttpError, type ProbeResult } from './sources/ats.js';
 import { resolveRss, fetchFeedItems, type RssResult } from './sources/rss.js';
 import { auditAccounts, type AuditDeps } from './audit.js';
-import { renderAuditTable, renderScoreTable, renderReviewQueueSummary } from './output/table.js';
+import { renderAuditTable, renderScoreTable, renderReviewQueueSummary, renderBriefs } from './output/table.js';
 import { classifyPostings } from './signals/hiring.js';
 import { matchArticles, type CandidateArticle } from './signals/press.js';
-import { fixtureLlm, liveLlm, CLASSIFY_MODEL } from './llm.js';
+import { fixtureLlm, liveLlm, CLASSIFY_MODEL, BRIEF_MODEL } from './llm.js';
 import { loadPlaybook } from './playbook.js';
 import { scoreAccounts } from './scoring.js';
+import { writeBriefs } from './briefs.js';
 
 const DEFAULT_ACCOUNTS_PATH = 'accounts/ai-startups.json';
 const DEFAULT_PLAYBOOK_PATH = 'playbooks/ai-startups.json';
@@ -20,9 +21,14 @@ const DEMO_LLM_PATH = 'fixtures/demo/llm/hiring-classify.json';
 const DEMO_FEEDS_DIR = 'fixtures/demo/feeds';
 const DEMO_SWEEP_PATH = 'fixtures/demo/feeds/general-sweep.json';
 const DEMO_PRESS_MATCH_PATH = 'fixtures/demo/llm/press-match.json';
+const DEMO_BRIEFS_PATH = 'fixtures/demo/llm/briefs.json';
 // Pinned so demo output is deterministic across runs/machines — the demo
 // fixtures (postings, feed items) were authored relative to this date.
 const DEMO_AS_OF = '2026-07-06';
+
+/** Top-N scored accounts (score > 0) that get a "why now" brief. */
+const DEMO_BRIEF_TOPN = 3;
+const LIVE_BRIEF_TOPN = 10;
 
 /** Real, live RSS/Atom feeds swept for press/funding news outside our tracked accounts' own feeds. */
 const GENERAL_FEEDS_PATH = 'feeds/general.json';
@@ -155,7 +161,14 @@ export async function runScoreDemo(): Promise<string> {
   const scored = scoreAccounts(accounts, events, playbook, DEMO_AS_OF);
   const scoreOutput = renderScoreTable(scored, accounts, events);
 
+  const briefLlm = fixtureLlm(DEMO_BRIEFS_PATH);
+  const briefs = await writeBriefs(scored, accounts, events, briefLlm, DEMO_BRIEF_TOPN, DEMO_AS_OF);
+  const briefsOutput = renderBriefs(briefs, accounts);
+
   let output = `${auditOutput}\n\n${scoreOutput}`;
+  if (briefsOutput) {
+    output += `\n\n${briefsOutput}`;
+  }
   if (reviewQueue.length > 0) {
     output += `\n\n${renderReviewQueueSummary(reviewQueue)}`;
   }
@@ -390,7 +403,20 @@ export async function runScoreLive(opts: {
   // otherwise a clean run would leave the previous run's queue on disk.
   writeReviewQueue(REVIEW_QUEUE_PATH, reviewQueue);
 
+  // Second spend announcement (after the entity-match preflight above, which
+  // already ran): briefs happen after scoring, since only scored accounts
+  // qualify. N = the actual number of qualifying accounts (top LIVE_BRIEF_TOPN
+  // with score > 0), not the topN cap itself.
+  const briefQualifyingCount = scored.filter((s) => s.score > 0).slice(0, LIVE_BRIEF_TOPN).length;
+  console.log(`about to write ${briefQualifyingCount} briefs with ${BRIEF_MODEL}`);
+  const briefLlm = liveLlm(BRIEF_MODEL);
+  const briefs = await writeBriefs(scored, accounts, events, briefLlm, LIVE_BRIEF_TOPN, asOf);
+  const briefsOutput = renderBriefs(briefs, accounts);
+
   let output = `${auditOutput}\n\n${scoreOutput}`;
+  if (briefsOutput) {
+    output += `\n\n${briefsOutput}`;
+  }
   if (reviewQueue.length > 0) {
     output += `\n\n${renderReviewQueueSummary(reviewQueue)}`;
   }

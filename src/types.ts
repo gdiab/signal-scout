@@ -102,6 +102,13 @@ export interface ReviewItem {
   reason: string;             // e.g. 'low-confidence match (0.45 < 0.6)'
 }
 
+export interface Brief {
+  accountId: string;
+  text: string;               // plain text with (URL, yyyy-mm-dd) citations
+  citedUrls: string[];        // URLs in text that belong to the account's events
+  uncitedUrls: string[];      // URLs in text NOT in the account's events (should be empty; warned)
+}
+
 export interface AuditRow {
   accountId: string;
   group: 'core' | 'contrast';
