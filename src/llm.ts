@@ -4,8 +4,12 @@ import Anthropic from '@anthropic-ai/sdk';
 /** Model id used for hiring-posting classification. */
 export const CLASSIFY_MODEL = 'claude-haiku-4-5-20251001';
 
+/** Model id used for brief generation only. */
+export const BRIEF_MODEL = 'claude-sonnet-5';
+
 export interface LlmClient {
   classify(input: { id: string; prompt: string }): Promise<string>;
+  generate(input: { id: string; prompt: string; maxTokens?: number }): Promise<string>;
 }
 
 /**
@@ -36,6 +40,25 @@ export function liveLlm(model: string): LlmClient {
       const text = block && block.type === 'text' ? block.text : '';
       return text.trim();
     },
+
+    async generate({ prompt, maxTokens }): Promise<string> {
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error(
+          'ANTHROPIC_API_KEY environment variable is not set; liveLlm requires it to call the Anthropic API.',
+        );
+      }
+      if (!client) {
+        client = new Anthropic();
+      }
+      const response = await client.messages.create({
+        model,
+        max_tokens: maxTokens ?? 1024,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const block = response.content[0];
+      const text = block && block.type === 'text' ? block.text : '';
+      return text.trim();
+    },
   };
 }
 
@@ -49,6 +72,17 @@ export function fixtureLlm(path: string): LlmClient {
 
   return {
     async classify({ id }): Promise<string> {
+      if (!responses) {
+        responses = JSON.parse(readFileSync(path, 'utf-8')) as Record<string, string>;
+      }
+      const response = responses[id];
+      if (response === undefined) {
+        throw new Error(`fixtureLlm: no recorded response for id "${id}" in ${path}`);
+      }
+      return response;
+    },
+
+    async generate({ id }): Promise<string> {
       if (!responses) {
         responses = JSON.parse(readFileSync(path, 'utf-8')) as Record<string, string>;
       }

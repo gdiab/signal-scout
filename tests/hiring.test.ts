@@ -31,6 +31,9 @@ function stubLlm(responses: Record<string, string>): { client: LlmClient; calls:
         }
         return response;
       },
+      async generate() {
+        throw new Error('stubLlm: generate() is not used by classifyPostings');
+      },
     },
   };
 }
@@ -189,6 +192,9 @@ describe('classifyPostings', () => {
           }, 0);
         });
       },
+      async generate() {
+        throw new Error('unused');
+      },
     };
 
     const events = await classifyPostings('acme', postings, client, '2026-07-06', 'greenhouse');
@@ -199,14 +205,14 @@ describe('classifyPostings', () => {
 
   it('demotes first-gtm to gtm-expansion when an account has more than 2', async () => {
     const postings = [1, 2, 3].map(i => ({ id: `p${i}`, title: `GTM role ${i}`, url: `https://x.example/p${i}`, publishedAt: '2026-07-01' }));
-    const llm = { classify: async () => 'first-gtm' };
+    const llm: LlmClient = { classify: async () => 'first-gtm', generate: async () => { throw new Error('unused'); } };
     const events = await classifyPostings('a', postings, llm, '2026-07-06', 'fixture');
     expect(events).toHaveLength(3);
     expect(events.every(e => e.subtype === 'gtm-expansion')).toBe(true);
   });
   it('keeps first-gtm when an account has 2 or fewer', async () => {
     const postings = [1, 2].map(i => ({ id: `p${i}`, title: `GTM role ${i}`, url: `https://x.example/p${i}`, publishedAt: '2026-07-01' }));
-    const llm = { classify: async () => 'first-gtm' };
+    const llm: LlmClient = { classify: async () => 'first-gtm', generate: async () => { throw new Error('unused'); } };
     const events = await classifyPostings('a', postings, llm, '2026-07-06', 'fixture');
     expect(events.every(e => e.subtype === 'first-gtm')).toBe(true);
   });
@@ -234,6 +240,19 @@ describe('fixtureLlm', () => {
   it('does not read the file at construction time — an invalid path only fails once classify is called', () => {
     expect(() => fixtureLlm('tests/fixtures/llm/does-not-exist.json')).not.toThrow();
   });
+
+  it('serves generate() from the same id -> response map as classify()', async () => {
+    const client = fixtureLlm(fixturePath);
+    const result = await client.generate({ id: 'acme:123', prompt: 'unused' });
+    expect(result).toBe('growth-eng');
+  });
+
+  it('generate() throws naming both the missing id and the fixture path for an unknown id', async () => {
+    const client = fixtureLlm(fixturePath);
+    await expect(client.generate({ id: 'acme:does-not-exist', prompt: 'unused' })).rejects.toThrow(
+      /acme:does-not-exist/,
+    );
+  });
 });
 
 describe('liveLlm', () => {
@@ -250,6 +269,14 @@ describe('liveLlm', () => {
     vi.stubEnv('ANTHROPIC_API_KEY', undefined as unknown as string);
     const client = liveLlm(CLASSIFY_MODEL);
     await expect(client.classify({ id: 'acme:p1', prompt: 'irrelevant' })).rejects.toThrow(
+      /ANTHROPIC_API_KEY/,
+    );
+  });
+
+  it('rejects generate with a message naming ANTHROPIC_API_KEY when it is unset (no live call made)', async () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', undefined as unknown as string);
+    const client = liveLlm(CLASSIFY_MODEL);
+    await expect(client.generate({ id: 'acme:p1', prompt: 'irrelevant' })).rejects.toThrow(
       /ANTHROPIC_API_KEY/,
     );
   });

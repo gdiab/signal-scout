@@ -86,6 +86,22 @@ export interface FeedItem {
   summary?: string;
 }
 
+export interface PressMatch {
+  accountId: string | null;   // matched account id, or null = none of our accounts
+  confidence: number;         // 0..1
+  category: 'funding' | 'product' | 'hiring' | 'other';
+  amount: string | null;      // e.g. "$18M" when category=funding and stated
+  date: string | null;        // ISO date extracted from the article text when stated
+}
+
+export interface ReviewItem {
+  url: string;
+  title: string;
+  accountId: string | null;
+  confidence: number;
+  reason: string;             // e.g. 'low-confidence match (0.45 < 0.6)'
+}
+
 export interface AuditRow {
   accountId: string;
   group: 'core' | 'contrast';
