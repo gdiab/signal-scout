@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
-import { runScoreDemo, runScoreLive } from '../src/cli.js';
+import { runScoreDemo, runScoreLive, runLiftDemo, runLiftLive } from '../src/cli.js';
 
 // Guard against accidental live network anywhere in this suite: if any code
 // path falls back to the global fetch instead of an injected fake, fail loudly.
@@ -71,6 +71,41 @@ describe('runScoreDemo (end-to-end, in-process)', () => {
     // summary, never silently matched (ADR 0001).
     expect(output).toContain('review queue (needs a human):');
     expect(output).toMatch(/\? .+ — loomwright \(0\.45\)/);
+
+    // The loop closes in one command: the lift table is appended, with at
+    // least one supported and at least one small-n-caveated inconclusive
+    // suggestion (the demo outcome fixture is authored to guarantee both),
+    // plus the proposals footer.
+    expect(output).toMatch(/w-funding-180 .*suggestion=supported/);
+    expect(output).toMatch(/suggestion=inconclusive/);
+    expect(output).toMatch(/⚠ small n \(with=\d+, without=\d+\) — directional at best/);
+    expect(output).toContain("suggestions are proposals for the playbook's weight `status` fields");
+  });
+});
+
+describe('runLiftDemo (end-to-end, in-process)', () => {
+  it('renders the standalone lift table with a supported and an inconclusive suggestion, offline, with the synthetic footer', async () => {
+    const output = await runLiftDemo();
+
+    expect(output).toMatch(/w-funding-180 .*suggestion=supported/);
+    expect(output).toMatch(/suggestion=inconclusive/);
+    expect(output).toMatch(/⚠ small n \(with=\d+, without=\d+\) — directional at best/);
+    expect(output).toContain("suggestions are proposals for the playbook's weight `status` fields");
+    expect(output).toContain('⚠ synthetic demo data — fictional companies');
+  });
+});
+
+describe('runLiftLive missing-file errors', () => {
+  it('names the missing signals snapshot and says to run score first', () => {
+    expect(() =>
+      runLiftLive({ events: 'fixtures/demo/events.jsonl', signals: 'no-such-signals.jsonl', playbook: 'playbooks/ai-startups.json' }),
+    ).toThrow(/no-such-signals\.jsonl.*run 'score' first to capture signal events/);
+  });
+
+  it('names the missing outcome log', () => {
+    expect(() =>
+      runLiftLive({ events: 'no-such-events.jsonl', signals: 'fixtures/demo/events.jsonl', playbook: 'playbooks/ai-startups.json' }),
+    ).toThrow(/outcome log not found: no-such-events\.jsonl/);
   });
 });
 
@@ -131,6 +166,26 @@ describe('demo fixture integrity', () => {
         const host = new URL(item.url).host;
         expect(host.endsWith('.example')).toBe(true);
       }
+    }
+  });
+
+  it('every outcome row in events.jsonl is demo:true, has a known stage, and references a core account', () => {
+    const coreIds = new Set(accounts.filter((a) => a.group === 'core').map((a) => a.id));
+    const knownStages = new Set(['scored', 'contacted', 'replied', 'applied', 'responded']);
+    const rows: Array<{ accountId: string; stage: string; date: string; demo?: boolean }> = readFileSync(
+      'fixtures/demo/events.jsonl',
+      'utf-8',
+    )
+      .split('\n')
+      .filter((line) => line.trim().length > 0)
+      .map((line) => JSON.parse(line));
+
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.demo).toBe(true);
+      expect(knownStages.has(row.stage)).toBe(true);
+      expect(coreIds.has(row.accountId)).toBe(true);
+      expect(row.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
   });
 

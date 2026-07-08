@@ -1,16 +1,28 @@
 import { existsSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { Command } from 'commander';
-import type { Account, AtsProvider, AuditRow, FeedItem, Posting, ReviewItem, SignalEvent } from './types.js';
+import type {
+  Account,
+  AtsProvider,
+  AuditRow,
+  FeedItem,
+  OutcomeEvent,
+  Playbook,
+  Posting,
+  ReviewItem,
+  ScoredAccount,
+  SignalEvent,
+} from './types.js';
 import { fetchPostings, probeBoard, AtsHttpError, type ProbeResult } from './sources/ats.js';
 import { resolveRss, fetchFeedItems, type RssResult } from './sources/rss.js';
 import { auditAccounts, type AuditDeps } from './audit.js';
-import { renderAuditTable, renderScoreTable, renderReviewQueueSummary, renderBriefs } from './output/table.js';
+import { renderAuditTable, renderScoreTable, renderReviewQueueSummary, renderBriefs, renderLiftTable } from './output/table.js';
 import { classifyPostings } from './signals/hiring.js';
 import { matchArticles, type CandidateArticle } from './signals/press.js';
 import { fixtureLlm, liveLlm, CLASSIFY_MODEL, BRIEF_MODEL } from './llm.js';
 import { loadPlaybook } from './playbook.js';
 import { scoreAccounts } from './scoring.js';
+import { computeLift } from './lift.js';
 import { writeBriefs } from './briefs.js';
 
 const DEFAULT_ACCOUNTS_PATH = 'accounts/ai-startups.json';
@@ -35,6 +47,10 @@ const GENERAL_FEEDS_PATH = 'feeds/general.json';
 const REVIEW_QUEUE_PATH = 'review-queue.jsonl';
 const SIGNAL_EVENTS_PATH = 'signal-events.jsonl';
 
+/** Outcome log (append-only, human/CRM-authored): 'scored' | 'contacted' | 'replied' | 'applied' | 'responded' rows. */
+const DEFAULT_EVENTS_PATH = 'events.jsonl';
+const DEMO_EVENTS_PATH = 'fixtures/demo/events.jsonl';
+
 /** Default cap on postings classified per account in live mode, overridable via --max-postings. */
 const DEFAULT_MAX_POSTINGS_PER_ACCOUNT = 40;
 /** Default cap on articles matched per feed in live mode, overridable via --max-articles. */
@@ -44,6 +60,19 @@ const POLITENESS_DELAY_MS = 150;
 
 function loadAccounts(path: string): Account[] {
   return JSON.parse(readFileSync(path, 'utf-8'));
+}
+
+/** Reads one JSON value per non-blank line — the shape used by every .jsonl file in this project. */
+function readJsonl<T>(path: string): T[] {
+  return readFileSync(path, 'utf-8')
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as T);
+}
+
+/** Appends renderLiftTable's output as a new section, `\n\n`-separated — the shared join used by score and lift alike. */
+function appendSection(output: string, section: string): string {
+  return `${output}\n\n${section}`;
 }
 
 /**
@@ -108,25 +137,33 @@ async function runAudit(opts: { accounts: string; demo?: boolean }): Promise<voi
   console.log(renderAuditTable(opts.demo ? withDemoPostingCounts(rows) : rows));
 }
 
+/** Everything the demo pipeline computes before any rendering happens — shared by `score --demo` and `lift --demo`. */
+interface DemoScoreResult {
+  accounts: Account[];
+  events: SignalEvent[];
+  scored: ScoredAccount[];
+  playbook: Playbook;
+  reviewQueue: ReviewItem[];
+  auditRows: AuditRow[];
+}
+
 /**
- * Full demo pipeline, in-process: demo accounts -> mocked audit -> classify
- * each core account's recorded postings via fixtureLlm -> build press/funding
- * candidates from each core account's own recorded feed fixture plus a
- * general-sweep fixture -> match them via fixtureLlm (the exact same
- * matchArticles pipeline live mode uses) -> merge hiring + press/funding
- * events -> score against the ai-startups playbook, asOf pinned to the date
- * the fixtures were authored for. Zero network, zero credentials, fully
- * deterministic. Returns the full output string (audit summary + ranked
- * score table + review-queue summary, when non-empty) rather than printing
- * directly, so it can be exercised end-to-end from tests.
+ * Full demo pipeline, in-process, compute only (no rendering): demo accounts
+ * -> mocked audit -> classify each core account's recorded postings via
+ * fixtureLlm -> build press/funding candidates from each core account's own
+ * recorded feed fixture plus a general-sweep fixture -> match them via
+ * fixtureLlm (the exact same matchArticles pipeline live mode uses) -> merge
+ * hiring + press/funding events -> score against the ai-startups playbook,
+ * asOf pinned to the date the fixtures were authored for. Zero network, zero
+ * credentials, fully deterministic. Split from runScoreDemo so `lift --demo`
+ * reuses the identical scored accounts without duplicating the pipeline.
  */
-export async function runScoreDemo(): Promise<string> {
+async function computeDemoScore(): Promise<DemoScoreResult> {
   const accounts = loadAccounts(DEMO_ACCOUNTS_PATH);
   const coreAccounts = accounts.filter((a) => a.group === 'core');
 
   const auditDeps: AuditDeps = { probeBoard: demoProbeBoard, probeRss: demoProbeRss, delayMs: 0 };
   const auditRows = withDemoPostingCounts(await auditAccounts(accounts, auditDeps));
-  const auditOutput = renderAuditTable(auditRows);
 
   const hiringLlm = fixtureLlm(DEMO_LLM_PATH);
   const hiringEvents: SignalEvent[] = [];
@@ -159,6 +196,40 @@ export async function runScoreDemo(): Promise<string> {
 
   const playbook = loadPlaybook(DEFAULT_PLAYBOOK_PATH);
   const scored = scoreAccounts(accounts, events, playbook, DEMO_AS_OF);
+
+  return { accounts, events, scored, playbook, reviewQueue, auditRows };
+}
+
+/**
+ * Computes and renders the lift section for one run: outcome rates per
+ * playbook weight for accounts WITH vs WITHOUT that weight's contribution,
+ * plus suggested `status` updates. LiftRow is an aggregate and carries no
+ * demo flag, so the synthetic-data footer is decided here from the outcome
+ * rows themselves — any demo outcome marks the whole section synthetic.
+ */
+export function buildLiftSection(
+  scored: ScoredAccount[],
+  outcomes: OutcomeEvent[],
+  playbook: Playbook,
+): string {
+  let section = renderLiftTable(computeLift(scored, outcomes, playbook), playbook);
+  if (outcomes.some((o) => o.demo)) {
+    section += '\n\n⚠ synthetic demo data — fictional companies';
+  }
+  return section;
+}
+
+/**
+ * Renders the full demo score output: audit summary + ranked score table +
+ * briefs + review-queue summary (when non-empty) + the lift table computed
+ * from the recorded demo outcome log — the experiment loop closes in one
+ * command. Returns the string rather than printing directly, so it can be
+ * exercised end-to-end from tests.
+ */
+export async function runScoreDemo(): Promise<string> {
+  const { accounts, events, scored, playbook, reviewQueue, auditRows } = await computeDemoScore();
+
+  const auditOutput = renderAuditTable(auditRows);
   const scoreOutput = renderScoreTable(scored, accounts, events);
 
   const briefLlm = fixtureLlm(DEMO_BRIEFS_PATH);
@@ -167,12 +238,50 @@ export async function runScoreDemo(): Promise<string> {
 
   let output = `${auditOutput}\n\n${scoreOutput}`;
   if (briefsOutput) {
-    output += `\n\n${briefsOutput}`;
+    output = appendSection(output, briefsOutput);
   }
   if (reviewQueue.length > 0) {
-    output += `\n\n${renderReviewQueueSummary(reviewQueue)}`;
+    output = appendSection(output, renderReviewQueueSummary(reviewQueue));
   }
+  const outcomes = readJsonl<OutcomeEvent>(DEMO_EVENTS_PATH);
+  output = appendSection(output, buildLiftSection(scored, outcomes, playbook));
   return output;
+}
+
+/** `lift --demo`: the same demo pipeline as `score --demo`, rendering only the lift section. */
+export async function runLiftDemo(): Promise<string> {
+  const { scored, playbook } = await computeDemoScore();
+  const outcomes = readJsonl<OutcomeEvent>(DEMO_EVENTS_PATH);
+  return buildLiftSection(scored, outcomes, playbook);
+}
+
+/**
+ * Live lift: re-scores from the signal-events snapshot the last live score
+ * wrote (pure, no LLM, no network) with asOf = today — resolved here at the
+ * CLI layer, computeLift and scoreAccounts never call Date.now() — joins the
+ * outcome log, and renders the lift table. Fails with a message naming
+ * whichever input file is missing (and, for the signals snapshot, how to
+ * produce it).
+ */
+export function runLiftLive(opts: { events: string; signals: string; playbook: string }): string {
+  if (!existsSync(opts.signals)) {
+    throw new Error(
+      `signal snapshot not found: ${opts.signals} — run 'score' first to capture signal events`,
+    );
+  }
+  if (!existsSync(opts.events)) {
+    throw new Error(`outcome log not found: ${opts.events}`);
+  }
+
+  const signalEvents = readJsonl<SignalEvent>(opts.signals);
+  const outcomes = readJsonl<OutcomeEvent>(opts.events);
+  const accounts = loadAccounts(DEFAULT_ACCOUNTS_PATH);
+  const playbook = loadPlaybook(opts.playbook);
+
+  const asOf = new Date().toISOString().slice(0, 10);
+  const scored = scoreAccounts(accounts, signalEvents, playbook, asOf);
+
+  return buildLiftSection(scored, outcomes, playbook);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -415,10 +524,17 @@ export async function runScoreLive(opts: {
 
   let output = `${auditOutput}\n\n${scoreOutput}`;
   if (briefsOutput) {
-    output += `\n\n${briefsOutput}`;
+    output = appendSection(output, briefsOutput);
   }
   if (reviewQueue.length > 0) {
-    output += `\n\n${renderReviewQueueSummary(reviewQueue)}`;
+    output = appendSection(output, renderReviewQueueSummary(reviewQueue));
+  }
+  // Close the loop in one command when an outcome log exists: same code path
+  // as the standalone `lift` command. No log yet -> no lift section (rather
+  // than an all-n/a table).
+  if (existsSync(DEFAULT_EVENTS_PATH)) {
+    const outcomes = readJsonl<OutcomeEvent>(DEFAULT_EVENTS_PATH);
+    output = appendSection(output, buildLiftSection(scored, outcomes, playbook));
   }
   return output;
 }
@@ -494,6 +610,43 @@ program
       }
     },
   );
+
+program
+  .command('lift')
+  .description(
+    'Compare outcome rates for accounts WITH vs WITHOUT each weight — suggests playbook status updates.',
+  )
+  .option('--events <path>', 'path to outcome log JSONL', DEFAULT_EVENTS_PATH)
+  .option('--signals <path>', "path to signal-events snapshot JSONL (written by live 'score')", SIGNAL_EVENTS_PATH)
+  .option('--playbook <path>', 'path to playbook JSON', DEFAULT_PLAYBOOK_PATH)
+  .option('--demo', 'run against synthetic demo fixtures, no network, no API key required', false)
+  .action(async (opts: { events: string; signals: string; playbook: string; demo?: boolean }) => {
+    if (opts.demo) {
+      if (opts.events !== DEFAULT_EVENTS_PATH) {
+        console.warn('--events is ignored when --demo is set');
+      }
+      if (opts.signals !== SIGNAL_EVENTS_PATH) {
+        console.warn('--signals is ignored when --demo is set');
+      }
+      if (opts.playbook !== DEFAULT_PLAYBOOK_PATH) {
+        console.warn('--playbook is ignored when --demo is set');
+      }
+      if (!existsSync(DEMO_ACCOUNTS_PATH)) {
+        console.log('demo fixtures not yet available');
+        process.exitCode = 1;
+        return;
+      }
+      console.log(await runLiftDemo());
+      return;
+    }
+
+    try {
+      console.log(runLiftLive(opts));
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : String(err));
+      process.exitCode = 1;
+    }
+  });
 
 /**
  * True iff this module is the process entry point (invoked directly, e.g.

@@ -1,4 +1,4 @@
-import type { Account, AuditRow, Brief, ReviewItem, ScoredAccount, SignalEvent } from '../types.js';
+import type { Account, AuditRow, Brief, LiftRow, Playbook, ReviewItem, ScoredAccount, SignalEvent } from '../types.js';
 
 const GROUPS: Array<AuditRow['group']> = ['core', 'contrast'];
 const GROUP_LABEL_WIDTH = 8;
@@ -162,5 +162,46 @@ export function renderReviewQueueSummary(items: ReviewItem[]): string {
   for (const item of items) {
     lines.push(`? ${item.title} — ${item.accountId} (${item.confidence}) ${item.reason}`);
   }
+  return lines.join('\n');
+}
+
+/** `x/y (r%)`, or `x/y (n/a)` when the denominator is 0 — never a misleading "0%" for "no data". */
+function rateCell(label: string, succeeded: number, attempted: number, rate: number | null): string {
+  const pct = rate === null ? 'n/a' : `${Math.round(rate * 100)}%`;
+  return `${label} ${succeeded}/${attempted} (${pct})`;
+}
+
+/**
+ * Renders the lift table: one line per playbook weight (playbook order,
+ * preserved from computeLift) showing its current playbook `status`, the
+ * with/without attempt-success rates, and the suggested status update, plus
+ * any caveats (small-n warnings) indented below. A fixed footer makes clear
+ * these suggestions are proposals for the playbook's `status` fields — this
+ * command never edits the playbook file itself.
+ */
+export function renderLiftTable(rows: LiftRow[], playbook: Playbook): string {
+  const weightById = new Map(playbook.weights.map((w) => [w.id, w]));
+  const idWidth = Math.max(0, ...rows.map((r) => r.weightId.length));
+  const statusWidth = Math.max(0, ...rows.map((r) => (weightById.get(r.weightId)?.status ?? '?').length));
+
+  const lines: string[] = [];
+
+  for (const row of rows) {
+    const currentStatus = weightById.get(row.weightId)?.status ?? '?';
+    const withCell = rateCell('with', row.withSucceeded, row.withAttempted, row.withRate);
+    const withoutCell = rateCell('without', row.withoutSucceeded, row.withoutAttempted, row.withoutRate);
+    lines.push(
+      `${row.weightId.padEnd(idWidth)}  status=${currentStatus.padEnd(statusWidth)}  ${withCell}  ${withoutCell}  suggestion=${row.suggestion}`,
+    );
+    for (const caveat of row.caveats) {
+      lines.push(`    ⚠ ${caveat}`);
+    }
+  }
+
+  lines.push('');
+  lines.push(
+    "suggestions are proposals for the playbook's weight `status` fields — review and apply by hand, this command never edits the playbook file.",
+  );
+
   return lines.join('\n');
 }

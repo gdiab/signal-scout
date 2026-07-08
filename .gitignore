@@ -7,6 +7,6 @@ docs/superpowers/
 playbooks/local/
 .env*
 report.html
-events.jsonl
+/events.jsonl
 review-queue.jsonl
 signal-events.jsonl

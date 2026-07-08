@@ -109,6 +109,25 @@ export interface Brief {
   uncitedUrls: string[];      // URLs in text NOT in the account's events (should be empty; warned)
 }
 
+export interface OutcomeEvent {
+  accountId: string;
+  stage: string;              // 'scored' | 'contacted' | 'replied' | 'applied' | 'responded'
+  date: string;               // ISO yyyy-mm-dd
+  demo?: boolean;
+}
+
+export interface LiftRow {
+  weightId: string;
+  withAttempted: number;      // accounts having this weight's contribution AND ≥1 attempt-stage outcome
+  withSucceeded: number;
+  withoutAttempted: number;
+  withoutSucceeded: number;
+  withRate: number | null;    // withSucceeded/withAttempted; null when denominator 0
+  withoutRate: number | null;
+  suggestion: 'supported' | 'refuted' | 'inconclusive';
+  caveats: string[];          // always includes an n-size note when either side < minN
+}
+
 export interface AuditRow {
   accountId: string;
   group: 'core' | 'contrast';
