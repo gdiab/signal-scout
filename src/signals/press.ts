@@ -57,13 +57,61 @@ function buildOwnFeedPrompt(item: CandidateArticle, account: Account): string {
   );
 }
 
+/** Finds the first top-level JSON object substring in `text`: from the first
+ * `{` to its balanced closing `}`, respecting string literals (quotes and
+ * backslash escapes) so a `}` or `{` inside a string value doesn't miscount
+ * the depth. Returns undefined if there's no `{` at all, or the braces never
+ * balance out (e.g. truncated output). Used as a fallback extraction when a
+ * straight JSON.parse fails because the model appended editorializing prose
+ * after (or wrapped prose around) an otherwise-valid JSON object. */
+function extractBalancedJsonObject(text: string): string | undefined {
+  const start = text.indexOf('{');
+  if (start === -1) return undefined;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\') {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === '{') {
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+  return undefined;
+}
+
 /** Strips one layer of a ```json ... ``` (or bare ``` ... ```) fence, if
  * present, then JSON.parses the result and strictly validates the full
  * PressMatch shape: accountId string|null (present), confidence a number in
  * [0,1], category one of the four labels, amount string|null, date
  * string|null. Returns undefined on any violation — malformed fields are
  * never coerced (a numeric accountId must warn as invalid, not silently
- * become a null match and get dropped as sweep noise). */
+ * become a null match and get dropped as sweep noise).
+ *
+ * If a straight parse of the (fence-stripped) text fails, falls back to
+ * extracting the first balanced `{...}` object from it and parsing that —
+ * this tolerates a model that returns valid JSON followed by trailing
+ * commentary, which breaks JSON.parse but shouldn't cost the match. This
+ * fallback only widens what gets *parsed*; the strict field validation below
+ * still applies unchanged, so it can't let a malformed object through. */
 function parseMatch(raw: string): PressMatch | undefined {
   const trimmed = raw.trim();
   const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
@@ -73,7 +121,13 @@ function parseMatch(raw: string): PressMatch | undefined {
   try {
     parsed = JSON.parse(unwrapped);
   } catch {
-    return undefined;
+    const extracted = extractBalancedJsonObject(unwrapped);
+    if (extracted === undefined) return undefined;
+    try {
+      parsed = JSON.parse(extracted);
+    } catch {
+      return undefined;
+    }
   }
   if (typeof parsed !== 'object' || parsed === null) return undefined;
 

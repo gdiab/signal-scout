@@ -100,7 +100,7 @@ describe('writeBriefs', () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0].id).toBe('brief:acme');
-    expect(calls[0].maxTokens).toBe(700);
+    expect(calls[0].maxTokens).toBe(1100);
 
     expect(briefs).toHaveLength(1);
     const brief = briefs[0];
@@ -197,7 +197,8 @@ describe('writeBriefs', () => {
     expect(prompt).toContain(
       'Write a short outreach brief with exactly three labeled sections: SIGNALS, WHY NOW, SUGGESTED ANGLE. ' +
         'Every factual claim must end with a citation in the form (URL, yyyy-mm-dd) using ONLY the URLs provided above. ' +
-        'Do not invent facts, numbers, or names not present in the events. Plain text, no markdown headers.',
+        'Do not invent facts, numbers, or names not present in the events. Plain text, no markdown headers. ' +
+        'Keep the whole brief under 250 words.',
     );
   });
 });

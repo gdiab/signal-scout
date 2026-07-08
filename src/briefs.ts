@@ -6,9 +6,15 @@ import type { LlmClient } from './llm.js';
 const BRIEF_INSTRUCTION =
   'Write a short outreach brief with exactly three labeled sections: SIGNALS, WHY NOW, SUGGESTED ANGLE. ' +
   'Every factual claim must end with a citation in the form (URL, yyyy-mm-dd) using ONLY the URLs provided above. ' +
-  'Do not invent facts, numbers, or names not present in the events. Plain text, no markdown headers.';
+  'Do not invent facts, numbers, or names not present in the events. Plain text, no markdown headers. ' +
+  'Keep the whole brief under 250 words.';
 
-const MAX_TOKENS = 700;
+/** Ceiling only — a guardrail against runaway generation, not the length
+ * control. The prompt's "under 250 words" instruction is what actually
+ * bounds brief length; this just needs enough headroom that a compliant
+ * response never gets cut mid-sentence (or mid-URL, which then reads as a
+ * spurious uncited-claims warning). */
+const MAX_TOKENS = 1100;
 
 /** Matches http(s) URLs, stopping before a comma or closing paren so the
  * `(URL, yyyy-mm-dd)` citation form doesn't swallow the trailing punctuation

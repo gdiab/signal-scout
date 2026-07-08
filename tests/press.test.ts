@@ -488,6 +488,74 @@ describe('matchArticles', () => {
     expect(events).toHaveLength(1);
   });
 
+  it('parses a fenced JSON object followed by trailing editorializing prose', async () => {
+    const item: CandidateArticle = {
+      title: 'Acme AI ships a new feature',
+      url: 'https://news.example/articles/fenced-plus-prose',
+      date: '2026-07-02',
+    };
+    const fencedPlusProse =
+      '```json\n' +
+      JSON.stringify({
+        accountId: 'acme',
+        confidence: 0.8,
+        category: 'product',
+        amount: null,
+        date: null,
+      }) +
+      '\n```\n\nThis match seems solid given the article focuses squarely on Acme AI\'s launch.';
+    const { client } = stubLlm({ 'press-match:sweep:fenced-plus-prose': fencedPlusProse });
+
+    const { events } = await matchArticles([item], accounts, client, '2026-07-06', 'rss');
+
+    expect(events).toHaveLength(1);
+    expect(events[0].url).toBe('https://news.example/articles/fenced-plus-prose');
+  });
+
+  it('parses a bare (unfenced) JSON object followed by trailing prose', async () => {
+    const item: CandidateArticle = {
+      title: 'Acme AI ships a new feature',
+      url: 'https://news.example/articles/bare-plus-prose',
+      date: '2026-07-02',
+    };
+    const barePlusProse =
+      JSON.stringify({
+        accountId: 'acme',
+        confidence: 0.8,
+        category: 'product',
+        amount: null,
+        date: null,
+      }) + '\n\nNote: confidence is high because the article names Acme AI directly.';
+    const { client } = stubLlm({ 'press-match:sweep:bare-plus-prose': barePlusProse });
+
+    const { events } = await matchArticles([item], accounts, client, '2026-07-06', 'rss');
+
+    expect(events).toHaveLength(1);
+    expect(events[0].url).toBe('https://news.example/articles/bare-plus-prose');
+  });
+
+  it('genuinely non-JSON prose (no extractable object) still warn+skips', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const item: CandidateArticle = {
+      title: 'Truly unstructured response article',
+      url: 'https://news.example/articles/no-json-at-all',
+    };
+    const { client } = stubLlm({
+      'press-match:sweep:no-json-at-all':
+        "I don't think this article is about any of the listed companies, so I won't return a match.",
+    });
+
+    const { events, reviewQueue } = await matchArticles([item], accounts, client, '2026-07-06', 'rss');
+
+    expect(events).toEqual([]);
+    expect(reviewQueue).toEqual([]);
+    expect(warnSpy).toHaveBeenCalled();
+    const message = warnSpy.mock.calls.map((c) => c.join(' ')).join(' ');
+    expect(message).toContain('no-json-at-all');
+
+    warnSpy.mockRestore();
+  });
+
   it('sends generate() calls sequentially with maxTokens 300, and sweep prompt lists id | name | domain for all accounts', async () => {
     const item: CandidateArticle = {
       title: 'Acme AI ships a new feature',

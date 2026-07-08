@@ -66,7 +66,7 @@ export function liveLlm(model: string): LlmClient {
       }
       // Thinking is explicitly disabled: claude-sonnet-5 (the brief model)
       // runs adaptive thinking when the param is omitted, and thinking tokens
-      // count against max_tokens — a 700-token brief budget could be spent
+      // count against max_tokens — a brief's token budget could be spent
       // mostly on thinking, truncating or emptying the visible text.
       const response = await client.messages.create({
         model,
