@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Nimbus Robotics Blog</title>
+    <link>https://nimbusrobotics.example/</link>
+    <description>Updates from Nimbus Robotics</description>
+    <item>
+      <title>Nimbus &amp; Partners launch new warehouse line</title>
+      <link>https://nimbusrobotics.example/news/warehouse-line</link>
+      <pubDate>Tue, 14 Jan 2025 09:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title><![CDATA[Nimbus Robotics closes $12M Series A]]></title>
+      <link>https://nimbusrobotics.example/news/series-a</link>
+      <pubDate>Mon, 03 Feb 2025 09:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Untitled internal note (no link, should be skipped)</title>
+      <pubDate>Wed, 01 Jan 2025 09:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Nimbus hits 50 engineers</title>
+      <link>https://nimbusrobotics.example/news/fifty-engineers</link>
+      <pubDate>not-a-real-date</pubDate>
+    </item>
+  </channel>
+</rss>

@@ -163,6 +163,7 @@ describe('resolveRss', () => {
       'https://acme.com/rss.xml',
       'https://acme.com/blog/rss.xml',
       'https://acme.com/atom.xml',
+      'https://acme.com/', // homepage discovery fallback; fake fetch has no 5th response, so it errors and stays unresolved
     ]);
     expect(result).toEqual({ resolvable: false });
   });
@@ -196,6 +197,7 @@ describe('resolveRss', () => {
       'https://acme.com/rss.xml',
       'https://acme.com/blog/rss.xml',
       'https://acme.com/atom.xml',
+      'https://acme.com/', // homepage discovery fallback; fake fetch has no 5th response, so it errors and stays unresolved
     ]);
   });
 

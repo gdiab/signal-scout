@@ -79,6 +79,13 @@ export interface Posting {   // normalized across the 3 ATS providers
   location?: string;
 }
 
+export interface FeedItem {
+  title: string;
+  url: string;
+  date?: string;               // ISO yyyy-mm-dd when the feed provided one
+  summary?: string;
+}
+
 export interface AuditRow {
   accountId: string;
   group: 'core' | 'contrast';
