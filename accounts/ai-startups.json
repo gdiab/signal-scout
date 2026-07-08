@@ -1,6 +1,4 @@
 [
-  { "id": "anthropic", "name": "Anthropic", "domain": "anthropic.com", "group": "core", "ats": { "provider": "greenhouse", "slug": "anthropic" } },
-  { "id": "openai", "name": "OpenAI", "domain": "openai.com", "group": "core", "ats": { "provider": "ashby", "slug": "openai" } },
   { "id": "scale-ai", "name": "Scale AI", "domain": "scale.com", "group": "core", "ats": { "provider": "greenhouse", "slug": "scaleai" } },
   { "id": "perplexity-ai", "name": "Perplexity AI", "domain": "perplexity.ai", "group": "core", "ats": { "provider": "ashby", "slug": "perplexity" } },
   { "id": "runway", "name": "Runway", "domain": "runwayml.com", "group": "core", "ats": { "provider": "ashby", "slug": "runway" } },
@@ -19,7 +17,6 @@
   { "id": "replit", "name": "Replit", "domain": "replit.com", "group": "core", "ats": { "provider": "ashby", "slug": "replit" } },
   { "id": "vercel", "name": "Vercel", "domain": "vercel.com", "group": "core", "ats": { "provider": "greenhouse", "slug": "vercel" } },
   { "id": "linear", "name": "Linear", "domain": "linear.app", "group": "core", "ats": { "provider": "ashby", "slug": "linear" } },
-  { "id": "notion", "name": "Notion", "domain": "notion.so", "group": "core", "ats": { "provider": "ashby", "slug": "notion" } },
   { "id": "airtable", "name": "Airtable", "domain": "airtable.com", "group": "core", "ats": { "provider": "greenhouse", "slug": "airtable" } },
   { "id": "webflow", "name": "Webflow", "domain": "webflow.com", "group": "core", "ats": { "provider": "greenhouse", "slug": "webflow" } },
   { "id": "temporal", "name": "Temporal Technologies", "domain": "temporal.io", "group": "core", "ats": { "provider": "greenhouse", "slug": "temporaltechnologies" } },
@@ -29,6 +26,9 @@
   { "id": "neon", "name": "Neon", "domain": "neon.tech", "group": "core", "ats": { "provider": "lever", "slug": "neon" } },
   { "id": "workos", "name": "WorkOS", "domain": "workos.com", "group": "core", "ats": { "provider": "ashby", "slug": "workos" } },
   { "id": "posthog", "name": "PostHog", "domain": "posthog.com", "group": "core", "ats": { "provider": "ashby", "slug": "posthog" } },
+  { "id": "baseten", "name": "Baseten", "domain": "baseten.co", "group": "core", "ats": { "provider": "ashby", "slug": "baseten" } },
+  { "id": "braintrust", "name": "Braintrust", "domain": "braintrust.dev", "group": "core", "ats": { "provider": "ashby", "slug": "braintrust" } },
+  { "id": "llamaindex", "name": "LlamaIndex", "domain": "llamaindex.ai", "group": "core", "ats": { "provider": "ashby", "slug": "llamaindex" } },
 
   { "id": "simonmed-imaging", "name": "SimonMed Imaging", "domain": "simonmed.com", "group": "contrast", "ats": { "provider": "lever", "slug": "simonmed" } },
   { "id": "frederick-health", "name": "Frederick Health", "domain": "frederickhealth.org", "group": "contrast" },
