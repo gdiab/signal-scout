@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest';
 import type { Posting, SignalEvent } from '../src/types.js';
 import { classifyPostings } from '../src/signals/hiring.js';
-import { fixtureLlm, liveLlm, CLASSIFY_MODEL, type LlmClient } from '../src/llm.js';
+import { extractText, fixtureLlm, liveLlm, CLASSIFY_MODEL, type LlmClient } from '../src/llm.js';
 
 // Guard against accidental live network anywhere in this suite: if any code
 // path falls back to the global fetch instead of an injected fake, fail loudly.
@@ -252,6 +252,36 @@ describe('fixtureLlm', () => {
     await expect(client.generate({ id: 'acme:does-not-exist', prompt: 'unused' })).rejects.toThrow(
       /acme:does-not-exist/,
     );
+  });
+});
+
+describe('extractText', () => {
+  it('returns the text when the only block is a text block', () => {
+    expect(extractText([{ type: 'text', text: ' hello ' }])).toBe('hello');
+  });
+
+  it('skips a leading thinking block and returns the text block (models with thinking on by default)', () => {
+    expect(
+      extractText([
+        { type: 'thinking', thinking: '' },
+        { type: 'text', text: 'the brief body' },
+      ]),
+    ).toBe('the brief body');
+  });
+
+  it('concatenates multiple text blocks in order', () => {
+    expect(
+      extractText([
+        { type: 'text', text: 'part one ' },
+        { type: 'thinking', thinking: 'x' },
+        { type: 'text', text: 'part two' },
+      ]),
+    ).toBe('part one part two');
+  });
+
+  it('returns an empty string when there is no text block', () => {
+    expect(extractText([{ type: 'thinking', thinking: 'only thoughts' }])).toBe('');
+    expect(extractText([])).toBe('');
   });
 });
 

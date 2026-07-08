@@ -13,6 +13,22 @@ export interface LlmClient {
 }
 
 /**
+ * Concatenates every text block in a Messages API response, ignoring any
+ * other block types. Models with thinking enabled by default (claude-sonnet-5
+ * runs adaptive thinking when the `thinking` param is omitted) put a
+ * `thinking` block FIRST in `content`, so reading `content[0].text` returns
+ * nothing — the live run that surfaced this produced 10 briefs with empty
+ * text. Trimmed, so callers get '' (not whitespace) when no text came back.
+ */
+export function extractText(blocks: Array<{ type: string; text?: string; thinking?: string }>): string {
+  return blocks
+    .filter((b): b is { type: 'text'; text: string } => b.type === 'text' && typeof b.text === 'string')
+    .map((b) => b.text)
+    .join('')
+    .trim();
+}
+
+/**
  * Live Anthropic-backed LlmClient. Reads ANTHROPIC_API_KEY from the
  * environment lazily — only when classify() is first called, never at
  * construction — so callers can build a client (e.g. to wire up a CLI)
@@ -36,9 +52,7 @@ export function liveLlm(model: string): LlmClient {
         max_tokens: 16,
         messages: [{ role: 'user', content: prompt }],
       });
-      const block = response.content[0];
-      const text = block && block.type === 'text' ? block.text : '';
-      return text.trim();
+      return extractText(response.content);
     },
 
     async generate({ prompt, maxTokens }): Promise<string> {
@@ -50,14 +64,17 @@ export function liveLlm(model: string): LlmClient {
       if (!client) {
         client = new Anthropic();
       }
+      // Thinking is explicitly disabled: claude-sonnet-5 (the brief model)
+      // runs adaptive thinking when the param is omitted, and thinking tokens
+      // count against max_tokens — a 700-token brief budget could be spent
+      // mostly on thinking, truncating or emptying the visible text.
       const response = await client.messages.create({
         model,
         max_tokens: maxTokens ?? 1024,
+        thinking: { type: 'disabled' },
         messages: [{ role: 'user', content: prompt }],
       });
-      const block = response.content[0];
-      const text = block && block.type === 'text' ? block.text : '';
-      return text.trim();
+      return extractText(response.content);
     },
   };
 }
