@@ -96,4 +96,11 @@ describe('missingKeyMessage', () => {
     expect(msg).toContain('./.env: found');
     expect(msg).not.toContain('sk-usable'); // never leak the value
   });
+
+  it('reports an env var that is set but empty', () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', '');
+    expect(missingKeyMessage(dir)).toContain(
+      'ANTHROPIC_API_KEY environment variable: set, but empty',
+    );
+  });
 });

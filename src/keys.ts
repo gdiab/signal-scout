@@ -59,6 +59,8 @@ export function resolveApiKey(cwd: string = process.cwd()): ResolvedKey | null {
  * call, so a bare `score` run with no key costs nothing.
  */
 export function missingKeyMessage(cwd: string = process.cwd()): string {
+  const envVarState =
+    process.env.ANTHROPIC_API_KEY === undefined ? 'not set' : 'set, but empty';
   const envPath = join(cwd, '.env');
   let dotEnvState = 'not found';
   if (existsSync(envPath)) {
@@ -68,7 +70,7 @@ export function missingKeyMessage(cwd: string = process.cwd()): string {
   }
   return [
     'ANTHROPIC_API_KEY is not set. Checked:',
-    '  - ANTHROPIC_API_KEY environment variable: not set',
+    `  - ANTHROPIC_API_KEY environment variable: ${envVarState}`,
     `  - ./.env: ${dotEnvState}`,
     '',
     'Set it one of these ways, then re-run:',
