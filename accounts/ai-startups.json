@@ -23,7 +23,7 @@
   { "id": "render", "name": "Render", "domain": "render.com", "group": "core", "ats": { "provider": "ashby", "slug": "render" } },
   { "id": "supabase", "name": "Supabase", "domain": "supabase.com", "group": "core", "ats": { "provider": "ashby", "slug": "supabase" } },
   { "id": "planetscale", "name": "PlanetScale", "domain": "planetscale.com", "group": "core", "ats": { "provider": "greenhouse", "slug": "planetscale" } },
-  { "id": "neon", "name": "Neon", "domain": "neon.tech", "group": "core", "ats": { "provider": "lever", "slug": "neon" } },
+  { "id": "neon", "name": "Neon", "domain": "neon.tech", "group": "core" },
   { "id": "workos", "name": "WorkOS", "domain": "workos.com", "group": "core", "ats": { "provider": "ashby", "slug": "workos" } },
   { "id": "posthog", "name": "PostHog", "domain": "posthog.com", "group": "core", "ats": { "provider": "ashby", "slug": "posthog" } },
   { "id": "baseten", "name": "Baseten", "domain": "baseten.co", "group": "core", "ats": { "provider": "ashby", "slug": "baseten" } },
