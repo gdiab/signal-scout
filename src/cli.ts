@@ -26,6 +26,7 @@ import { loadPlaybook } from './playbook.js';
 import { scoreAccounts } from './scoring.js';
 import { computeLift } from './lift.js';
 import { writeBriefs } from './briefs.js';
+import { resolveApiKey, missingKeyMessage } from './keys.js';
 
 const DEFAULT_ACCOUNTS_PATH = 'accounts/ai-startups.json';
 const DEFAULT_PLAYBOOK_PATH = 'playbooks/ai-startups.json';
@@ -454,6 +455,24 @@ async function auditAndFetchLive(
 }
 
 /**
+ * Resolve the API key (env var, then gitignored ./.env) before any live
+ * work starts. A .env hit is loaded into process.env so the Anthropic SDK
+ * and the fail-closed guards downstream see it; the source announcement
+ * goes to stderr so stdout stays clean for piped score output. Throws the
+ * full what-was-checked/how-to-fix message when nothing resolves.
+ */
+export function ensureApiKey(): void {
+  const resolved = resolveApiKey();
+  if (!resolved) {
+    throw new Error(missingKeyMessage());
+  }
+  if (resolved.source === '.env') {
+    process.env.ANTHROPIC_API_KEY = resolved.key;
+    console.error('using ANTHROPIC_API_KEY from .env');
+  }
+}
+
+/**
  * Live scoring pipeline: real accounts, live ATS + RSS fetches, live Haiku
  * classification and entity matching. asOf is resolved to today here at the
  * CLI layer — scoreAccounts itself stays pure and never calls Date.now().
@@ -487,9 +506,7 @@ export async function runScoreLive(opts: {
   reportPath?: string;
 }): Promise<string> {
   if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error(
-      'ANTHROPIC_API_KEY environment variable is not set; live scoring requires it to classify hiring postings.',
-    );
+    throw new Error(missingKeyMessage());
   }
 
   const accounts = loadAccounts(opts.accounts);
@@ -699,6 +716,7 @@ program
       }
 
       try {
+        ensureApiKey();
         console.log(await runScoreLive({ ...opts, reportPath }));
         if (reportPath) {
           console.log(`report written to ${reportPath}`);

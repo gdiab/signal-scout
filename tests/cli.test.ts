@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { pathToFileURL } from 'node:url';
-import { mkdtempSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { isMainModule, selectRecentPostings, writeReviewQueue, parseNonNegativeNumber } from '../src/cli.js';
+import { isMainModule, selectRecentPostings, writeReviewQueue, parseNonNegativeNumber, ensureApiKey } from '../src/cli.js';
 import type { Posting, ReviewItem } from '../src/types.js';
 
 describe('isMainModule', () => {
@@ -120,5 +120,43 @@ describe('writeReviewQueue', () => {
 
     expect(() => writeReviewQueue(path, [])).not.toThrow();
     expect(existsSync(path)).toBe(false);
+  });
+});
+
+describe('ensureApiKey', () => {
+  let dir: string;
+  let cwdSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'cli-key-test-'));
+    cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(dir);
+    vi.stubEnv('ANTHROPIC_API_KEY', undefined as unknown as string);
+  });
+
+  afterEach(() => {
+    cwdSpy.mockRestore();
+    vi.unstubAllEnvs();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('loads the key from .env into process.env and announces the source on stderr', () => {
+    writeFileSync(join(dir, '.env'), 'ANTHROPIC_API_KEY=sk-from-file\n');
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    ensureApiKey();
+    expect(process.env.ANTHROPIC_API_KEY).toBe('sk-from-file');
+    expect(errSpy).toHaveBeenCalledWith('using ANTHROPIC_API_KEY from .env');
+    errSpy.mockRestore();
+  });
+
+  it('stays silent when the key comes from the environment', () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', 'sk-from-env');
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    ensureApiKey();
+    expect(errSpy).not.toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
+
+  it('throws the rich message (what was checked + fixes) when nothing resolves', () => {
+    expect(() => ensureApiKey()).toThrow(/Checked:[\s\S]*\.env: not found[\s\S]*console\.anthropic\.com/);
   });
 });

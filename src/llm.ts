@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import Anthropic from '@anthropic-ai/sdk';
+import { missingKeyMessage } from './keys.js';
 
 /** Model id used for hiring-posting classification. */
 export const CLASSIFY_MODEL = 'claude-haiku-4-5-20251001';
@@ -40,9 +41,7 @@ export function liveLlm(model: string): LlmClient {
   return {
     async classify({ prompt }): Promise<string> {
       if (!process.env.ANTHROPIC_API_KEY) {
-        throw new Error(
-          'ANTHROPIC_API_KEY environment variable is not set; liveLlm requires it to call the Anthropic API.',
-        );
+        throw new Error(missingKeyMessage());
       }
       if (!client) {
         client = new Anthropic();
@@ -63,9 +62,7 @@ export function liveLlm(model: string): LlmClient {
 
     async generate({ prompt, maxTokens }): Promise<string> {
       if (!process.env.ANTHROPIC_API_KEY) {
-        throw new Error(
-          'ANTHROPIC_API_KEY environment variable is not set; liveLlm requires it to call the Anthropic API.',
-        );
+        throw new Error(missingKeyMessage());
       }
       if (!client) {
         client = new Anthropic();
