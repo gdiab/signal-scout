@@ -60,6 +60,17 @@ describe('resolveApiKey', () => {
     expect(resolveApiKey(dir)).toEqual({ key: 'sk-ok', source: '.env' });
     expect(process.env.SECRET_TOKEN).toBeUndefined();
   });
+
+  it('accepts an export-prefixed line in .env', () => {
+    writeFileSync(join(dir, '.env'), 'export ANTHROPIC_API_KEY=sk-exported\n');
+    expect(resolveApiKey(dir)).toEqual({ key: 'sk-exported', source: '.env' });
+  });
+
+  it('treats a whitespace-only env var as missing', () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', '   ');
+    writeFileSync(join(dir, '.env'), 'ANTHROPIC_API_KEY=sk-from-file\n');
+    expect(resolveApiKey(dir)).toEqual({ key: 'sk-from-file', source: '.env' });
+  });
 });
 
 describe('missingKeyMessage', () => {

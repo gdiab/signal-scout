@@ -11,13 +11,13 @@ export interface ResolvedKey {
  * variable is read — deliberately not a general dotenv: no other variables
  * are parsed or injected. Comment lines are skipped, surrounding whitespace
  * is tolerated, and one layer of matching single/double quotes is stripped.
- * An empty value counts as missing (null).
+ * Lines may optionally start with 'export '. An empty value counts as missing (null).
  */
 function parseEnvFile(content: string): string | null {
   for (const rawLine of content.split('\n')) {
     const line = rawLine.trim();
     if (line.startsWith('#')) continue;
-    const match = line.match(/^ANTHROPIC_API_KEY\s*=\s*(.*)$/);
+    const match = line.match(/^(?:export\s+)?ANTHROPIC_API_KEY\s*=\s*(.*)$/);
     if (!match) continue;
     let value = match[1].trim();
     if (
@@ -38,7 +38,7 @@ function parseEnvFile(content: string): string | null {
  * value, so callers fail closed before any network call.
  */
 export function resolveApiKey(cwd: string = process.cwd()): ResolvedKey | null {
-  const fromEnv = process.env.ANTHROPIC_API_KEY;
+  const fromEnv = process.env.ANTHROPIC_API_KEY?.trim();
   if (fromEnv) {
     return { key: fromEnv, source: 'env' };
   }
