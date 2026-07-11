@@ -51,3 +51,31 @@ export function resolveApiKey(cwd: string = process.cwd()): ResolvedKey | null {
   }
   return null;
 }
+
+/**
+ * Multi-line, copy-pasteable failure message for a missing key. Reports the
+ * exact state observed (env var, ./.env) and every supported fix. Never
+ * includes any part of a key value. Guards throw this BEFORE any network
+ * call, so a bare `score` run with no key costs nothing.
+ */
+export function missingKeyMessage(cwd: string = process.cwd()): string {
+  const envPath = join(cwd, '.env');
+  let dotEnvState = 'not found';
+  if (existsSync(envPath)) {
+    dotEnvState = parseEnvFile(readFileSync(envPath, 'utf8'))
+      ? 'found — but it was not loaded; run via the CLI (npx tsx src/cli.ts score), which reads it'
+      : 'found, but no usable ANTHROPIC_API_KEY line';
+  }
+  return [
+    'ANTHROPIC_API_KEY is not set. Checked:',
+    '  - ANTHROPIC_API_KEY environment variable: not set',
+    `  - ./.env: ${dotEnvState}`,
+    '',
+    'Set it one of these ways, then re-run:',
+    '  export ANTHROPIC_API_KEY=sk-ant-...',
+    "  echo 'ANTHROPIC_API_KEY=sk-ant-...' > .env        (gitignored; only this variable is read from it)",
+    '  ANTHROPIC_API_KEY="$(security find-generic-password -s anthropic-api-key -w)" npx tsx src/cli.ts score   (macOS keychain)',
+    '',
+    'Get a key: https://console.anthropic.com/settings/keys',
+  ].join('\n');
+}
