@@ -17,7 +17,7 @@ What appears, in order: a signal-availability **audit** (which accounts have a r
 
 The hiring classification and press/funding entity matching run through the exact same pipeline live mode uses, driven by recorded LLM responses. Everything is synthetic — fictional companies with `.example` domains — and every surface says so: output ends with `⚠ synthetic demo data — fictional companies`.
 
-**Status:** the full design above is built and working — coverage audit, hiring + funding + press signals, scoring with recency decay and compound bonuses, cited briefs, the review queue, the experiment loop (`lift`), and the HTML report. Live mode last verified end-to-end 2026-07-08 (numbers below).
+**Status:** the full design above is built and working — coverage audit, hiring + funding + press signals, scoring with recency decay and compound bonuses, cited briefs, the review queue, the experiment loop (`lift`), and the HTML report. Live mode last verified end-to-end 2026-07-10 (numbers below).
 
 ## The other commands
 
