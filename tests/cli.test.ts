@@ -3,7 +3,14 @@ import { pathToFileURL } from 'node:url';
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { isMainModule, selectRecentPostings, writeReviewQueue, parseNonNegativeNumber, ensureApiKey } from '../src/cli.js';
+import {
+  isMainModule,
+  selectRecentPostings,
+  writeReviewQueue,
+  parseNonNegativeNumber,
+  ensureApiKey,
+  runLiftLive,
+} from '../src/cli.js';
 import type { Posting, ReviewItem } from '../src/types.js';
 
 describe('isMainModule', () => {
@@ -120,6 +127,32 @@ describe('writeReviewQueue', () => {
 
     expect(() => writeReviewQueue(path, [])).not.toThrow();
     expect(existsSync(path)).toBe(false);
+  });
+});
+
+describe('runLiftLive --accounts', () => {
+  const events = 'tests/fixtures/lift-accounts-events.jsonl';
+  const signals = 'tests/fixtures/lift-accounts-signals.jsonl';
+  const playbook = 'tests/fixtures/lift-accounts-playbook.json';
+
+  it('scores against the given --accounts path, not a hardcoded default', () => {
+    const output = runLiftLive({ events, signals, playbook, accounts: 'tests/fixtures/lift-accounts.json' });
+    // a, b, c have the w1 signal ("with"); d, e, f don't ("without").
+    // a, b replied (2/3 with); d replied (1/3 without) -> >=1.5x lift -> supported.
+    expect(output).toMatch(/w1\s+status=untested\s+with 2\/3 \(67%\)\s+without 1\/3 \(33%\)\s+suggestion=supported/);
+  });
+
+  it('regression: a mismatched (default) accounts list scores nobody in the signal snapshot, all n=0', () => {
+    // This is the exact bug from the finding: pointing --playbook at a
+    // signals snapshot for one account universe while accounts silently
+    // stays hardcoded to another produces meaningless all-zero rows.
+    const output = runLiftLive({
+      events,
+      signals,
+      playbook,
+      accounts: 'accounts/ai-startups.json', // real accounts, none named a-f
+    });
+    expect(output).toMatch(/w1\s+status=untested\s+with 0\/0 \(n\/a\)\s+without 0\/0 \(n\/a\)\s+suggestion=inconclusive/);
   });
 });
 

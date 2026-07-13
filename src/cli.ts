@@ -319,8 +319,13 @@ export async function runLiftDemo(): Promise<string> {
  * outcome log, and renders the lift table. Fails with a message naming
  * whichever input file is missing (and, for the signals snapshot, how to
  * produce it).
+ *
+ * accounts MUST be the same account list the signals snapshot was scored
+ * against (i.e. whatever `--accounts` the live `score` run used) — a
+ * mismatched list silently scores nobody in the snapshot, producing
+ * meaningless all-zero lift rows rather than an error.
  */
-export function runLiftLive(opts: { events: string; signals: string; playbook: string }): string {
+export function runLiftLive(opts: { events: string; signals: string; playbook: string; accounts: string }): string {
   if (!existsSync(opts.signals)) {
     throw new Error(
       `signal snapshot not found: ${opts.signals} — run 'score' first to capture signal events`,
@@ -332,7 +337,7 @@ export function runLiftLive(opts: { events: string; signals: string; playbook: s
 
   const signalEvents = readJsonl<SignalEvent>(opts.signals);
   const outcomes = readJsonl<OutcomeEvent>(opts.events);
-  const accounts = loadAccounts(DEFAULT_ACCOUNTS_PATH);
+  const accounts = loadAccounts(opts.accounts);
   const playbook = loadPlaybook(opts.playbook);
 
   const asOf = new Date().toISOString().slice(0, 10);
@@ -509,6 +514,11 @@ export async function runScoreLive(opts: {
     throw new Error(missingKeyMessage());
   }
 
+  // Loaded (and validated) up front, before any network call — a bad
+  // --playbook path used to only surface after the full ATS/RSS fetch pass
+  // below, burning minutes of live fetching before failing.
+  const playbook = loadPlaybook(opts.playbook);
+
   const accounts = loadAccounts(opts.accounts);
   const coreAccounts = accounts.filter((a) => a.group === 'core');
   const maxPostings = opts.maxPostings ?? DEFAULT_MAX_POSTINGS_PER_ACCOUNT;
@@ -570,7 +580,6 @@ export async function runScoreLive(opts: {
 
   const asOf = new Date().toISOString().slice(0, 10);
   const llm = liveLlm(classifyModel);
-  const playbook = loadPlaybook(opts.playbook);
 
   const hiringEvents: SignalEvent[] = [];
   for (const account of coreAccounts) {
@@ -733,12 +742,16 @@ program
   .description(
     'Compare outcome rates for accounts WITH vs WITHOUT each weight — suggests playbook status updates.',
   )
+  .option('--accounts <path>', 'path to accounts JSON', DEFAULT_ACCOUNTS_PATH)
   .option('--events <path>', 'path to outcome log JSONL', DEFAULT_EVENTS_PATH)
   .option('--signals <path>', "path to signal-events snapshot JSONL (written by live 'score')", SIGNAL_EVENTS_PATH)
   .option('--playbook <path>', 'path to playbook JSON', DEFAULT_PLAYBOOK_PATH)
   .option('--demo', 'run against synthetic demo fixtures, no network, no API key required', false)
-  .action(async (opts: { events: string; signals: string; playbook: string; demo?: boolean }) => {
+  .action(async (opts: { accounts: string; events: string; signals: string; playbook: string; demo?: boolean }) => {
     if (opts.demo) {
+      if (opts.accounts !== DEFAULT_ACCOUNTS_PATH) {
+        console.warn('--accounts is ignored when --demo is set');
+      }
       if (opts.events !== DEFAULT_EVENTS_PATH) {
         console.warn('--events is ignored when --demo is set');
       }

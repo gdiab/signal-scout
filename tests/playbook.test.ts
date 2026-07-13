@@ -37,6 +37,14 @@ describe('loadPlaybook', () => {
   it('rejects a reclassifyAtCount target that collides with a declared label id', () => {
     expect(() => loadPlaybook('tests/fixtures/bad-playbook-reclass-collision.json')).toThrow(/collid|declared/i);
   });
+  it('rejects a press weight whose subtype is not "article", naming the offending weight id', () => {
+    expect(() => loadPlaybook('tests/fixtures/bad-playbook-press-subtype.json')).toThrow(/subtype/i);
+    expect(() => loadPlaybook('tests/fixtures/bad-playbook-press-subtype.json')).toThrow(/w-press/);
+  });
+  it('rejects a funding weight whose subtype is not "round", naming the offending weight id', () => {
+    expect(() => loadPlaybook('tests/fixtures/bad-playbook-funding-subtype.json')).toThrow(/subtype/i);
+    expect(() => loadPlaybook('tests/fixtures/bad-playbook-funding-subtype.json')).toThrow(/w-funding-180/);
+  });
   it('loads the ai-adopters playbook: described labels, 6 weights, 1 compound', () => {
     const pb = loadPlaybook('playbooks/ai-adopters.json');
     expect(pb.name).toBe('ai-adopters');

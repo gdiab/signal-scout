@@ -166,6 +166,12 @@ export function loadPlaybook(path: string): Playbook {
     if (w.signalType === 'hiring' && w.subtype !== undefined && !validSubtypes.has(w.subtype)) {
       fail(`weights (id "${w.id}").subtype`, `"${w.subtype}" is not a declared hiring label or reclassify target`);
     }
+    if (w.signalType === 'press' && w.subtype !== undefined && w.subtype !== 'article') {
+      fail(`weights (id "${w.id}").subtype`, `"${w.subtype}" must be "article" for a press weight`);
+    }
+    if (w.signalType === 'funding' && w.subtype !== undefined && w.subtype !== 'round') {
+      fail(`weights (id "${w.id}").subtype`, `"${w.subtype}" must be "round" for a funding weight`);
+    }
   }
 
   if (!Array.isArray(raw.compounds)) {

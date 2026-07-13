@@ -1,0 +1,3 @@
+{"id":"hiring:a:1","accountId":"a","type":"hiring","subtype":"growth-eng","date":"2026-07-01","url":"https://a.example/jobs/1","summary":"Growth Engineer","confidence":1,"source":"greenhouse","demo":false}
+{"id":"hiring:b:1","accountId":"b","type":"hiring","subtype":"growth-eng","date":"2026-07-01","url":"https://b.example/jobs/1","summary":"Growth Engineer","confidence":1,"source":"greenhouse","demo":false}
+{"id":"hiring:c:1","accountId":"c","type":"hiring","subtype":"growth-eng","date":"2026-07-01","url":"https://c.example/jobs/1","summary":"Growth Engineer","confidence":1,"source":"greenhouse","demo":false}

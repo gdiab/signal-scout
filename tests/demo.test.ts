@@ -144,13 +144,23 @@ describe('runLiftDemo (end-to-end, in-process)', () => {
 describe('runLiftLive missing-file errors', () => {
   it('names the missing signals snapshot and says to run score first', () => {
     expect(() =>
-      runLiftLive({ events: 'fixtures/demo/events.jsonl', signals: 'no-such-signals.jsonl', playbook: 'playbooks/ai-startups.json' }),
+      runLiftLive({
+        events: 'fixtures/demo/events.jsonl',
+        signals: 'no-such-signals.jsonl',
+        playbook: 'playbooks/ai-startups.json',
+        accounts: 'accounts/ai-startups.json',
+      }),
     ).toThrow(/no-such-signals\.jsonl.*run 'score' first to capture signal events/);
   });
 
   it('names the missing outcome log', () => {
     expect(() =>
-      runLiftLive({ events: 'no-such-events.jsonl', signals: 'fixtures/demo/events.jsonl', playbook: 'playbooks/ai-startups.json' }),
+      runLiftLive({
+        events: 'no-such-events.jsonl',
+        signals: 'fixtures/demo/events.jsonl',
+        playbook: 'playbooks/ai-startups.json',
+        accounts: 'accounts/ai-startups.json',
+      }),
     ).toThrow(/outcome log not found: no-such-events\.jsonl/);
   });
 });
@@ -165,6 +175,16 @@ describe('runScoreLive key guard', () => {
     await expect(
       runScoreLive({ accounts: 'accounts/ai-startups.json', playbook: 'playbooks/ai-startups.json' }),
     ).rejects.toThrow(/ANTHROPIC_API_KEY/);
+  });
+
+  it('rejects a bad --playbook path before any network call, not after minutes of ATS fetching', async () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', 'sk-test');
+    const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockClear();
+    await expect(
+      runScoreLive({ accounts: 'accounts/ai-startups.json', playbook: 'no-such-playbook.json' }),
+    ).rejects.toThrow(/no-such-playbook\.json/);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

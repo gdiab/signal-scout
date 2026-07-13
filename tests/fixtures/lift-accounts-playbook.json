@@ -1,0 +1,10 @@
+{
+  "name": "lift-accounts-test",
+  "description": "minimal playbook for exercising lift --accounts",
+  "halfLifeDays": { "hiring": 45, "funding": 90, "press": 30 },
+  "hiringLabels": [{ "id": "growth-eng" }],
+  "weights": [
+    { "id": "w1", "signalType": "hiring", "subtype": "growth-eng", "points": 30, "hypothesis": "h", "status": "untested" }
+  ],
+  "compounds": []
+}

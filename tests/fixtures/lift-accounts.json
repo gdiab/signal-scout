@@ -1,0 +1,8 @@
+[
+  { "id": "a", "name": "A", "domain": "a.example", "group": "core" },
+  { "id": "b", "name": "B", "domain": "b.example", "group": "core" },
+  { "id": "c", "name": "C", "domain": "c.example", "group": "core" },
+  { "id": "d", "name": "D", "domain": "d.example", "group": "core" },
+  { "id": "e", "name": "E", "domain": "e.example", "group": "core" },
+  { "id": "f", "name": "F", "domain": "f.example", "group": "core" }
+]

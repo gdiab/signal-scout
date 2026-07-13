@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vites
 import type { Posting, SignalEvent } from '../src/types.js';
 import { classifyPostings, buildPrompt } from '../src/signals/hiring.js';
 import { extractText, fixtureLlm, liveLlm, CLASSIFY_MODEL, type LlmClient } from '../src/llm.js';
+import { loadPlaybook } from '../src/playbook.js';
 import type { HiringLabel } from '../src/types.js';
 
 const AI_STARTUPS_LABELS: HiringLabel[] = [
@@ -240,8 +241,19 @@ describe('buildPrompt (ontology-as-config)', () => {
   const posting: Posting = { id: 'p1', title: 'Growth Engineer', url: 'https://x.example/p1', publishedAt: '' };
 
   it('is byte-identical to the pre-config hardcoded prompt for the migrated ai-startups labels', () => {
-    expect(buildPrompt(posting, AI_STARTUPS_LABELS)).toBe(
+    // Sourced from the real playbook file (not the hand-rolled
+    // AI_STARTUPS_LABELS constant above) so the byte-identity guarantee is
+    // self-contained: it fails the moment playbooks/ai-startups.json's
+    // labels drift, not just when the constant here does.
+    const labels = loadPlaybook('playbooks/ai-startups.json').hiringLabels;
+    expect(buildPrompt(posting, labels)).toBe(
       'Job posting title: "Growth Engineer". ' +
+        'Classify this job posting into exactly one of: growth-eng, first-gtm, ai-eng, generic-eng, other. ' +
+        'Reply with EXACTLY one label from that list and no other text.',
+    );
+    const nycPosting: Posting = { ...posting, location: 'NYC' };
+    expect(buildPrompt(nycPosting, labels)).toBe(
+      'Job posting title: "Growth Engineer". Location: NYC. ' +
         'Classify this job posting into exactly one of: growth-eng, first-gtm, ai-eng, generic-eng, other. ' +
         'Reply with EXACTLY one label from that list and no other text.',
     );

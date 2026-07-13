@@ -1,0 +1,9 @@
+{"accountId":"a","stage":"contacted","date":"2026-07-01"}
+{"accountId":"b","stage":"contacted","date":"2026-07-01"}
+{"accountId":"c","stage":"contacted","date":"2026-07-01"}
+{"accountId":"d","stage":"contacted","date":"2026-07-01"}
+{"accountId":"e","stage":"contacted","date":"2026-07-01"}
+{"accountId":"f","stage":"contacted","date":"2026-07-01"}
+{"accountId":"a","stage":"replied","date":"2026-07-02"}
+{"accountId":"b","stage":"replied","date":"2026-07-02"}
+{"accountId":"d","stage":"replied","date":"2026-07-02"}
