@@ -1,12 +1,5 @@
-import type { Posting, SignalEvent } from '../types.js';
+import type { HiringLabel, Posting, SignalEvent } from '../types.js';
 import type { LlmClient } from '../llm.js';
-
-const LABELS = ['growth-eng', 'first-gtm', 'ai-eng', 'generic-eng', 'other'] as const;
-type HiringLabel = (typeof LABELS)[number];
-
-function isHiringLabel(value: string): value is HiringLabel {
-  return (LABELS as readonly string[]).includes(value);
-}
 
 /**
  * Normalizes a raw model response toward a bare label: trim + lowercase, then
@@ -26,18 +19,33 @@ function normalizeResponse(raw: string): string {
   return value;
 }
 
-function buildPrompt(posting: Posting): string {
+/**
+ * Builds the classification prompt from the playbook's label ontology. Labels
+ * without descriptions produce the bare-id list format; any label with a
+ * description adds a Definitions clause between the label list and the
+ * reply instruction.
+ */
+export function buildPrompt(posting: Posting, labels: HiringLabel[]): string {
   const location = posting.location ? ` Location: ${posting.location}.` : '';
+  const ids = labels.map((l) => l.id).join(', ');
+  const described = labels.filter((l) => l.description !== undefined);
+  const definitions =
+    described.length > 0
+      ? `Definitions: ${described.map((l) => `${l.id} = ${l.description}`).join('; ')}. `
+      : '';
   return (
     `Job posting title: "${posting.title}".${location} ` +
-    `Classify this job posting into exactly one of: growth-eng, first-gtm, ai-eng, generic-eng, other. ` +
+    `Classify this job posting into exactly one of: ${ids}, other. ` +
+    definitions +
     `Reply with EXACTLY one label from that list and no other text.`
   );
 }
 
 /**
  * Classifies each Posting with one sequential LLM call per posting, turning
- * recognized labels (other than 'other') into hiring SignalEvents.
+ * recognized labels (other than 'other') into hiring SignalEvents. The label
+ * vocabulary, and any account-level reclassification rules, come entirely
+ * from the playbook's hiringLabels — this module knows no ontology of its own.
  */
 export async function classifyPostings(
   accountId: string,
@@ -45,17 +53,19 @@ export async function classifyPostings(
   llm: LlmClient,
   asOf: string,
   source: string,
+  labels: HiringLabel[],
 ): Promise<SignalEvent[]> {
+  const labelIds = new Set(labels.map((l) => l.id));
   const events: SignalEvent[] = [];
 
   for (const posting of postings) {
     const raw = await llm.classify({
       id: `${accountId}:${posting.id}`,
-      prompt: buildPrompt(posting),
+      prompt: buildPrompt(posting, labels),
     });
     const normalized = normalizeResponse(raw);
-    let label: HiringLabel;
-    if (isHiringLabel(normalized)) {
+    let label: string;
+    if (labelIds.has(normalized) || normalized === 'other') {
       label = normalized;
     } else {
       label = 'other';
@@ -83,17 +93,20 @@ export async function classifyPostings(
     });
   }
 
-  // A per-posting classifier can't see the account's overall hiring state, so
-  // it labels every open GTM role 'first-gtm' — a company with a full GTM org
-  // (many open GTM roles) would otherwise score as if each one were the
-  // first hire, the opposite of the "first GTM hire" hypothesis. Demote at
-  // the account level, after the loop: 3+ first-gtm postings means the motion
-  // is already staffed, so relabel all of them 'gtm-expansion'.
-  const firstGtmCount = events.filter((e) => e.subtype === 'first-gtm').length;
-  if (firstGtmCount > 2) {
-    for (const event of events) {
-      if (event.subtype === 'first-gtm') {
-        event.subtype = 'gtm-expansion';
+  // A per-posting classifier can't see the account's overall hiring state —
+  // e.g. it labels every open GTM role 'first-gtm' even at a company with a
+  // full GTM org. Playbooks express the account-level correction as a
+  // reclassifyAtCount rule: when an account accumulates >= threshold events
+  // of a label, all of them are demoted to the rule's derived subtype.
+  for (const label of labels) {
+    const rule = label.reclassifyAtCount;
+    if (!rule) continue;
+    const count = events.filter((e) => e.subtype === label.id).length;
+    if (count >= rule.threshold) {
+      for (const event of events) {
+        if (event.subtype === label.id) {
+          event.subtype = rule.to;
+        }
       }
     }
   }

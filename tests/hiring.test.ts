@@ -1,7 +1,15 @@
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest';
 import type { Posting, SignalEvent } from '../src/types.js';
-import { classifyPostings } from '../src/signals/hiring.js';
+import { classifyPostings, buildPrompt } from '../src/signals/hiring.js';
 import { extractText, fixtureLlm, liveLlm, CLASSIFY_MODEL, type LlmClient } from '../src/llm.js';
+import type { HiringLabel } from '../src/types.js';
+
+const AI_STARTUPS_LABELS: HiringLabel[] = [
+  { id: 'growth-eng' },
+  { id: 'first-gtm', reclassifyAtCount: { threshold: 3, to: 'gtm-expansion' } },
+  { id: 'ai-eng' },
+  { id: 'generic-eng' },
+];
 
 // Guard against accidental live network anywhere in this suite: if any code
 // path falls back to the global fetch instead of an injected fake, fail loudly.
@@ -68,7 +76,7 @@ describe('classifyPostings', () => {
       'acme:p3': 'other',
     });
 
-    const events = await classifyPostings('acme', postings, client, '2026-07-06', 'greenhouse');
+    const events = await classifyPostings('acme', postings, client, '2026-07-06', 'greenhouse', AI_STARTUPS_LABELS);
 
     expect(events).toEqual<SignalEvent[]>([
       {
@@ -102,7 +110,7 @@ describe('classifyPostings', () => {
   it('substitutes asOf for empty publishedAt when the label is not other, and flags dateEstimated:true', async () => {
     const { client } = stubLlm({ 'acme:p3': 'ai-eng' });
 
-    const events = await classifyPostings('acme', [postings[2]], client, '2026-07-06', 'greenhouse');
+    const events = await classifyPostings('acme', [postings[2]], client, '2026-07-06', 'greenhouse', AI_STARTUPS_LABELS);
 
     expect(events).toHaveLength(1);
     expect(events[0].date).toBe('2026-07-06');
@@ -112,7 +120,7 @@ describe('classifyPostings', () => {
   it('does not set dateEstimated when the posting has a real publishedAt', async () => {
     const { client } = stubLlm({ 'acme:p1': 'growth-eng' });
 
-    const events = await classifyPostings('acme', [postings[0]], client, '2026-07-06', 'greenhouse');
+    const events = await classifyPostings('acme', [postings[0]], client, '2026-07-06', 'greenhouse', AI_STARTUPS_LABELS);
 
     expect(events).toHaveLength(1);
     expect(events[0].dateEstimated).toBeUndefined();
@@ -125,7 +133,7 @@ describe('classifyPostings', () => {
       'acme:p3': 'other',
     });
 
-    await classifyPostings('acme', postings, client, '2026-07-06', 'greenhouse');
+    await classifyPostings('acme', postings, client, '2026-07-06', 'greenhouse', AI_STARTUPS_LABELS);
 
     expect(calls.map((c) => c.id)).toEqual(['acme:p1', 'acme:p2', 'acme:p3']);
     expect(calls[0].prompt).toContain('Senior Growth Engineer');
@@ -136,7 +144,7 @@ describe('classifyPostings', () => {
 
   it('sets demo:true only when source is "fixture"', async () => {
     const { client } = stubLlm({ 'acme:p1': 'growth-eng' });
-    const events = await classifyPostings('acme', [postings[0]], client, '2026-07-06', 'fixture');
+    const events = await classifyPostings('acme', [postings[0]], client, '2026-07-06', 'fixture', AI_STARTUPS_LABELS);
     expect(events[0].demo).toBe(true);
     expect(events[0].source).toBe('fixture');
   });
@@ -145,7 +153,7 @@ describe('classifyPostings', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { client } = stubLlm({ 'acme:p1': 'I think this is growth engineering' });
 
-    const events = await classifyPostings('acme', [postings[0]], client, '2026-07-06', 'greenhouse');
+    const events = await classifyPostings('acme', [postings[0]], client, '2026-07-06', 'greenhouse', AI_STARTUPS_LABELS);
 
     expect(events).toEqual([]);
     expect(warnSpy).toHaveBeenCalledTimes(1);
@@ -158,7 +166,7 @@ describe('classifyPostings', () => {
 
   it('is case-insensitive and trims whitespace around valid labels', async () => {
     const { client } = stubLlm({ 'acme:p1': '  Growth-Eng  \n' });
-    const events = await classifyPostings('acme', [postings[0]], client, '2026-07-06', 'greenhouse');
+    const events = await classifyPostings('acme', [postings[0]], client, '2026-07-06', 'greenhouse', AI_STARTUPS_LABELS);
     expect(events).toHaveLength(1);
     expect(events[0].subtype).toBe('growth-eng');
   });
@@ -172,7 +180,7 @@ describe('classifyPostings', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { client } = stubLlm({ 'acme:p1': raw });
 
-    const events = await classifyPostings('acme', [postings[0]], client, '2026-07-06', 'greenhouse');
+    const events = await classifyPostings('acme', [postings[0]], client, '2026-07-06', 'greenhouse', AI_STARTUPS_LABELS);
 
     expect(events).toHaveLength(1);
     expect(events[0].subtype).toBe(expected);
@@ -207,7 +215,7 @@ describe('classifyPostings', () => {
       },
     };
 
-    const events = await classifyPostings('acme', postings, client, '2026-07-06', 'greenhouse');
+    const events = await classifyPostings('acme', postings, client, '2026-07-06', 'greenhouse', AI_STARTUPS_LABELS);
 
     expect(overlapped).toBe(false);
     expect(events).toHaveLength(2);
@@ -216,15 +224,61 @@ describe('classifyPostings', () => {
   it('demotes first-gtm to gtm-expansion when an account has more than 2', async () => {
     const postings = [1, 2, 3].map(i => ({ id: `p${i}`, title: `GTM role ${i}`, url: `https://x.example/p${i}`, publishedAt: '2026-07-01' }));
     const llm: LlmClient = { classify: async () => 'first-gtm', generate: async () => { throw new Error('unused'); } };
-    const events = await classifyPostings('a', postings, llm, '2026-07-06', 'fixture');
+    const events = await classifyPostings('a', postings, llm, '2026-07-06', 'fixture', AI_STARTUPS_LABELS);
     expect(events).toHaveLength(3);
     expect(events.every(e => e.subtype === 'gtm-expansion')).toBe(true);
   });
   it('keeps first-gtm when an account has 2 or fewer', async () => {
     const postings = [1, 2].map(i => ({ id: `p${i}`, title: `GTM role ${i}`, url: `https://x.example/p${i}`, publishedAt: '2026-07-01' }));
     const llm: LlmClient = { classify: async () => 'first-gtm', generate: async () => { throw new Error('unused'); } };
-    const events = await classifyPostings('a', postings, llm, '2026-07-06', 'fixture');
+    const events = await classifyPostings('a', postings, llm, '2026-07-06', 'fixture', AI_STARTUPS_LABELS);
     expect(events.every(e => e.subtype === 'first-gtm')).toBe(true);
+  });
+});
+
+describe('buildPrompt (ontology-as-config)', () => {
+  const posting: Posting = { id: 'p1', title: 'Growth Engineer', url: 'https://x.example/p1', publishedAt: '' };
+
+  it('is byte-identical to the pre-config hardcoded prompt for the migrated ai-startups labels', () => {
+    expect(buildPrompt(posting, AI_STARTUPS_LABELS)).toBe(
+      'Job posting title: "Growth Engineer". ' +
+        'Classify this job posting into exactly one of: growth-eng, first-gtm, ai-eng, generic-eng, other. ' +
+        'Reply with EXACTLY one label from that list and no other text.',
+    );
+  });
+
+  it('appends a Definitions clause when labels carry descriptions', () => {
+    const labels: HiringLabel[] = [
+      { id: 'ai-adoption', description: 'a role that owns AI adoption across the org' },
+      { id: 'generic-eng' },
+    ];
+    expect(buildPrompt(posting, labels)).toBe(
+      'Job posting title: "Growth Engineer". ' +
+        'Classify this job posting into exactly one of: ai-adoption, generic-eng, other. ' +
+        'Definitions: ai-adoption = a role that owns AI adoption across the org. ' +
+        'Reply with EXACTLY one label from that list and no other text.',
+    );
+  });
+
+  it('classifyPostings accepts labels from any ontology and applies generic reclassification', async () => {
+    const labels: HiringLabel[] = [
+      { id: 'ai-adoption', description: 'owns AI adoption', reclassifyAtCount: { threshold: 2, to: 'ai-committee' } },
+    ];
+    const postings: Posting[] = [
+      { id: 'p1', title: 'Head of AI', url: 'https://x.example/p1', publishedAt: '2026-07-01' },
+      { id: 'p2', title: 'AI Program Manager', url: 'https://x.example/p2', publishedAt: '2026-07-02' },
+    ];
+    const { client } = stubLlm({ 'acme:p1': 'ai-adoption', 'acme:p2': 'ai-adoption' });
+    const events = await classifyPostings('acme', postings, client, '2026-07-06', 'greenhouse', labels);
+    expect(events.map((e) => e.subtype)).toEqual(['ai-committee', 'ai-committee']);
+  });
+
+  it('treats a response outside the playbook ontology as other (no event)', async () => {
+    const labels: HiringLabel[] = [{ id: 'ai-adoption' }];
+    const postings: Posting[] = [{ id: 'p1', title: 'Growth Engineer', url: 'https://x.example/p1', publishedAt: '2026-07-01' }];
+    const { client } = stubLlm({ 'acme:p1': 'growth-eng' });
+    const events = await classifyPostings('acme', postings, client, '2026-07-06', 'greenhouse', labels);
+    expect(events).toHaveLength(0);
   });
 });
 

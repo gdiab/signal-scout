@@ -197,6 +197,7 @@ interface DemoScoreResult {
 async function computeDemoScore(): Promise<DemoScoreResult> {
   const accounts = loadAccounts(DEMO_ACCOUNTS_PATH);
   const coreAccounts = accounts.filter((a) => a.group === 'core');
+  const playbook = loadPlaybook(DEFAULT_PLAYBOOK_PATH);
 
   const auditDeps: AuditDeps = { probeBoard: demoProbeBoard, probeRss: demoProbeRss, delayMs: 0 };
   const auditRows = withDemoPostingCounts(await auditAccounts(accounts, auditDeps));
@@ -206,7 +207,7 @@ async function computeDemoScore(): Promise<DemoScoreResult> {
   for (const account of coreAccounts) {
     const postingsPath = `${DEMO_POSTINGS_DIR}/${account.id}.json`;
     const postings: Posting[] = JSON.parse(readFileSync(postingsPath, 'utf-8'));
-    const events = await classifyPostings(account.id, postings, hiringLlm, DEMO_AS_OF, 'fixture');
+    const events = await classifyPostings(account.id, postings, hiringLlm, DEMO_AS_OF, 'fixture', playbook.hiringLabels);
     hiringEvents.push(...events);
   }
 
@@ -230,7 +231,6 @@ async function computeDemoScore(): Promise<DemoScoreResult> {
 
   const events = [...hiringEvents, ...pressEvents];
 
-  const playbook = loadPlaybook(DEFAULT_PLAYBOOK_PATH);
   // Contrast accounts appear only in the audit, never scored (SPEC) — mirrors
   // the live path and press's own core-only matching.
   const scored = scoreAccounts(coreAccounts, events, playbook, DEMO_AS_OF);
@@ -570,12 +570,13 @@ export async function runScoreLive(opts: {
 
   const asOf = new Date().toISOString().slice(0, 10);
   const llm = liveLlm(classifyModel);
+  const playbook = loadPlaybook(opts.playbook);
 
   const hiringEvents: SignalEvent[] = [];
   for (const account of coreAccounts) {
     const postings = cappedByAccountId.get(account.id);
     if (!postings || postings.length === 0 || !account.ats) continue;
-    const classified = await classifyPostings(account.id, postings, llm, asOf, account.ats.provider);
+    const classified = await classifyPostings(account.id, postings, llm, asOf, account.ats.provider, playbook.hiringLabels);
     hiringEvents.push(...classified);
   }
 
@@ -588,7 +589,6 @@ export async function runScoreLive(opts: {
     events.map((e) => JSON.stringify(e)).join('\n') + (events.length > 0 ? '\n' : ''),
   );
 
-  const playbook = loadPlaybook(opts.playbook);
   // Contrast accounts appear only in the audit, tagged as such, never scored (SPEC).
   const scored = scoreAccounts(coreAccounts, events, playbook, asOf);
   const scoreOutput = renderScoreTable(scored, accounts, events);
