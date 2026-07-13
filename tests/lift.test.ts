@@ -4,6 +4,7 @@ import type { ScoredAccount, OutcomeEvent, Playbook } from '../src/types.js';
 
 const pb = {
   name: 't', description: 't', halfLifeDays: { hiring: 45, funding: 90, press: 30 },
+  hiringLabels: [],
   weights: [{ id: 'w1', signalType: 'hiring', points: 30, hypothesis: 'h', status: 'untested' }],
   compounds: [],
 } as Playbook;

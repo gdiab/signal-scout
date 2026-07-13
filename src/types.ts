@@ -46,10 +46,20 @@ export interface Compound {
   status: 'untested' | 'supported' | 'refuted';
 }
 
+export interface HiringLabel {
+  id: string;                 // classifier output label; 'other' is implicit and must not be declared
+  description?: string;       // when present, appended to the classifier prompt as a definition
+  reclassifyAtCount?: {       // account-level demotion: >= threshold events of this label
+    threshold: number;        // are relabeled `to` (a derived subtype, never sent to the classifier)
+    to: string;
+  };
+}
+
 export interface Playbook {
   name: string;
   description: string;
   halfLifeDays: Record<SignalType, number>;
+  hiringLabels: HiringLabel[];
   weights: Weight[];
   compounds: Compound[];
 }

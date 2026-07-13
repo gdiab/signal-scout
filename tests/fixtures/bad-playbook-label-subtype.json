@@ -11,7 +11,7 @@
   "weights": [
     { "id": "w-first-gtm", "signalType": "hiring", "subtype": "first-gtm", "points": 40, "maxEventsPerAccount": 1,
       "hypothesis": "A first GTM/growth hire means the company is staffing a motion it hasn't systematized - highest receptivity to tooling and outside help", "status": "untested" },
-    { "id": "w-growth-eng", "signalType": "hiring", "subtype": "growth-eng", "points": 30, "maxEventsPerAccount": 3,
+    { "id": "w-growth-eng", "signalType": "hiring", "subtype": "no-such-label", "points": 30, "maxEventsPerAccount": 3,
       "hypothesis": "Growth-engineering roles signal an experimentation culture being built right now", "status": "untested" },
     { "id": "w-ai-eng", "signalType": "hiring", "subtype": "ai-eng", "points": 15, "maxEventsPerAccount": 3,
       "hypothesis": "AI-engineering hiring indicates budget and ambition but not necessarily a growth motion", "status": "untested" },

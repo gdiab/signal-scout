@@ -92,6 +92,7 @@ function basePlaybook(): Playbook {
     name: 'ai-startups',
     description: 'test playbook',
     halfLifeDays: { hiring: 45, funding: 90, press: 30 },
+    hiringLabels: [],
     weights: [
       {
         id: 'w-hiring-growth',

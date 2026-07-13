@@ -5,6 +5,7 @@ import type { Account, SignalEvent, Playbook } from '../src/types.js';
 const pb: Playbook = {
   name: 't', description: 't',
   halfLifeDays: { hiring: 45, funding: 90, press: 30 },
+  hiringLabels: [],
   weights: [
     { id: 'w-growth-eng', signalType: 'hiring', subtype: 'growth-eng', points: 30, hypothesis: 'h', status: 'untested' },
     { id: 'w-generic-eng', signalType: 'hiring', subtype: 'generic-eng', points: 5, hypothesis: 'h', status: 'untested' },

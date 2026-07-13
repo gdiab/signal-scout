@@ -6,7 +6,8 @@
     { "id": "growth-eng" },
     { "id": "first-gtm", "reclassifyAtCount": { "threshold": 3, "to": "gtm-expansion" } },
     { "id": "ai-eng" },
-    { "id": "generic-eng" }
+    { "id": "generic-eng" },
+    { "id": "other" }
   ],
   "weights": [
     { "id": "w-first-gtm", "signalType": "hiring", "subtype": "first-gtm", "points": 40, "maxEventsPerAccount": 1,

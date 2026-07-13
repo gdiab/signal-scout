@@ -2,6 +2,12 @@
   "name": "bad-playbook-cap",
   "description": "Structurally valid playbook with a non-positive-integer maxEventsPerAccount",
   "halfLifeDays": { "hiring": 45, "funding": 90, "press": 30 },
+  "hiringLabels": [
+    { "id": "growth-eng" },
+    { "id": "first-gtm", "reclassifyAtCount": { "threshold": 3, "to": "gtm-expansion" } },
+    { "id": "ai-eng" },
+    { "id": "generic-eng" }
+  ],
   "weights": [
     { "id": "w-press", "signalType": "press", "points": 10, "maxEventsPerAccount": 0,
       "hypothesis": "Recent press indicates external momentum", "status": "untested" }

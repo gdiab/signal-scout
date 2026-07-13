@@ -20,4 +20,21 @@ describe('loadPlaybook', () => {
     expect(() => loadPlaybook('tests/fixtures/bad-playbook-cap.json')).toThrow(/maxEventsPerAccount/i);
     expect(() => loadPlaybook('tests/fixtures/bad-playbook-cap.json')).toThrow(/w-press/);
   });
+  it('loads hiringLabels from the ai-startups playbook: four labels, first-gtm carries the reclassify rule', () => {
+    const pb = loadPlaybook('playbooks/ai-startups.json');
+    expect(pb.hiringLabels.map((l) => l.id)).toEqual(['growth-eng', 'first-gtm', 'ai-eng', 'generic-eng']);
+    const firstGtm = pb.hiringLabels.find((l) => l.id === 'first-gtm');
+    expect(firstGtm?.reclassifyAtCount).toEqual({ threshold: 3, to: 'gtm-expansion' });
+    expect(pb.hiringLabels.every((l) => l.description === undefined)).toBe(true);
+  });
+  it('rejects a hiring weight whose subtype is not a declared label or reclassify target', () => {
+    expect(() => loadPlaybook('tests/fixtures/bad-playbook-label-subtype.json')).toThrow(/subtype/i);
+    expect(() => loadPlaybook('tests/fixtures/bad-playbook-label-subtype.json')).toThrow(/no-such-label/);
+  });
+  it("rejects a declared label named 'other'", () => {
+    expect(() => loadPlaybook('tests/fixtures/bad-playbook-label-other.json')).toThrow(/other/i);
+  });
+  it('rejects a reclassifyAtCount target that collides with a declared label id', () => {
+    expect(() => loadPlaybook('tests/fixtures/bad-playbook-reclass-collision.json')).toThrow(/collid|declared/i);
+  });
 });

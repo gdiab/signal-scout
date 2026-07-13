@@ -57,6 +57,7 @@ describe('renderReviewQueueSummary', () => {
 describe('renderLiftTable', () => {
   const playbook = {
     name: 't', description: 't', halfLifeDays: { hiring: 45, funding: 90, press: 30 },
+    hiringLabels: [],
     weights: [
       { id: 'w1', signalType: 'hiring', points: 30, hypothesis: 'h', status: 'untested' },
       { id: 'w2', signalType: 'funding', points: 25, hypothesis: 'h', status: 'supported' },

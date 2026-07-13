@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { Compound, Playbook, SignalType, Weight } from './types.js';
+import type { Compound, HiringLabel, Playbook, SignalType, Weight } from './types.js';
 
 const SIGNAL_TYPES: SignalType[] = ['hiring', 'funding', 'press'];
 const STATUSES = ['untested', 'supported', 'refuted'];
@@ -21,6 +21,37 @@ function validateHalfLifeDays(raw: unknown): asserts raw is Record<SignalType, n
     const value = obj[type];
     if (typeof value !== 'number' || !(value > 0)) {
       fail(`halfLifeDays.${type}`, 'must be a positive number');
+    }
+  }
+}
+
+function validateHiringLabel(raw: unknown, index: number): asserts raw is HiringLabel {
+  if (typeof raw !== 'object' || raw === null) {
+    fail(`hiringLabels[${index}]`, 'must be an object');
+  }
+  const l = raw as Record<string, unknown>;
+  if (!isNonEmptyString(l.id)) {
+    fail(`hiringLabels[${index}].id`, 'must be a nonempty string');
+  }
+  if (l.id === 'other') {
+    fail(`hiringLabels[${index}].id`, "must not be 'other' (the implicit fallback label)");
+  }
+  if (l.description !== undefined && !isNonEmptyString(l.description)) {
+    fail(`hiringLabels[${index}].description`, 'must be a nonempty string when present');
+  }
+  if (l.reclassifyAtCount !== undefined) {
+    if (typeof l.reclassifyAtCount !== 'object' || l.reclassifyAtCount === null) {
+      fail(`hiringLabels[${index}].reclassifyAtCount`, 'must be an object when present');
+    }
+    const r = l.reclassifyAtCount as Record<string, unknown>;
+    if (typeof r.threshold !== 'number' || !Number.isInteger(r.threshold) || r.threshold <= 0) {
+      fail(`hiringLabels[${index}].reclassifyAtCount.threshold`, 'must be a positive integer');
+    }
+    if (!isNonEmptyString(r.to)) {
+      fail(`hiringLabels[${index}].reclassifyAtCount.to`, 'must be a nonempty string');
+    }
+    if (r.to === 'other') {
+      fail(`hiringLabels[${index}].reclassifyAtCount.to`, "must not be 'other'");
     }
   }
 }
@@ -105,12 +136,37 @@ export function loadPlaybook(path: string): Playbook {
   }
   validateHalfLifeDays(raw.halfLifeDays);
 
+  if (!Array.isArray(raw.hiringLabels) || raw.hiringLabels.length === 0) {
+    fail('hiringLabels', 'must be a nonempty array');
+  }
+  raw.hiringLabels.forEach((l, i) => validateHiringLabel(l, i));
+  const hiringLabels = raw.hiringLabels as HiringLabel[];
+  const labelIds = new Set(hiringLabels.map((l) => l.id));
+  if (labelIds.size !== hiringLabels.length) {
+    fail('hiringLabels', 'label ids must be unique');
+  }
+  const validSubtypes = new Set(labelIds);
+  for (const label of hiringLabels) {
+    const to = label.reclassifyAtCount?.to;
+    if (to === undefined) continue;
+    if (labelIds.has(to)) {
+      fail(`hiringLabels (label "${label.id}")`, `reclassifyAtCount.to "${to}" collides with a declared label id`);
+    }
+    validSubtypes.add(to);
+  }
+
   if (!Array.isArray(raw.weights)) {
     fail('weights', 'must be an array');
   }
   raw.weights.forEach((w, i) => validateWeight(w, i));
   const weights = raw.weights as Weight[];
   const weightIds = new Set(weights.map(w => w.id));
+
+  for (const w of weights) {
+    if (w.signalType === 'hiring' && w.subtype !== undefined && !validSubtypes.has(w.subtype)) {
+      fail(`weights (id "${w.id}").subtype`, `"${w.subtype}" is not a declared hiring label or reclassify target`);
+    }
+  }
 
   if (!Array.isArray(raw.compounds)) {
     fail('compounds', 'must be an array');
@@ -122,6 +178,7 @@ export function loadPlaybook(path: string): Playbook {
     name: raw.name,
     description: raw.description,
     halfLifeDays: raw.halfLifeDays,
+    hiringLabels,
     weights,
     compounds,
   };

@@ -4,7 +4,7 @@
   "halfLifeDays": { "hiring": 45, "funding": 90, "press": 30 },
   "hiringLabels": [
     { "id": "growth-eng" },
-    { "id": "first-gtm", "reclassifyAtCount": { "threshold": 3, "to": "gtm-expansion" } },
+    { "id": "first-gtm", "reclassifyAtCount": { "threshold": 3, "to": "ai-eng" } },
     { "id": "ai-eng" },
     { "id": "generic-eng" }
   ],

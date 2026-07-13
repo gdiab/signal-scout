@@ -2,6 +2,12 @@
   "name": "bad-playbook",
   "description": "Structurally valid playbook with a compound referencing an unknown weight id",
   "halfLifeDays": { "hiring": 45, "funding": 90, "press": 30 },
+  "hiringLabels": [
+    { "id": "growth-eng" },
+    { "id": "first-gtm", "reclassifyAtCount": { "threshold": 3, "to": "gtm-expansion" } },
+    { "id": "ai-eng" },
+    { "id": "generic-eng" }
+  ],
   "weights": [
     { "id": "w-first-gtm", "signalType": "hiring", "subtype": "first-gtm", "points": 40,
       "hypothesis": "A first GTM/growth hire means the company is staffing a motion it hasn't systematized", "status": "untested" },
