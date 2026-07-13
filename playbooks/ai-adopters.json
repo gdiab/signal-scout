@@ -1,0 +1,29 @@
+{
+  "name": "ai-adopters",
+  "description": "Mid-to-large non-AI-native companies showing AI-adoption signals - the ICP for AI consulting, training, and enablement vendors",
+  "halfLifeDays": { "hiring": 60, "funding": 180, "press": 45 },
+  "hiringLabels": [
+    { "id": "ai-adoption", "description": "a role that owns AI adoption, enablement, transformation, or strategy across the organization (e.g. Head of AI, AI Program Manager, AI Enablement Lead) - not a hands-on engineering role" },
+    { "id": "ai-eng", "description": "a hands-on AI/ML engineering, data science, or applied research role building AI systems" },
+    { "id": "data-platform", "description": "a data engineering, data platform, or analytics infrastructure role" },
+    { "id": "generic-eng", "description": "any other software engineering role" }
+  ],
+  "weights": [
+    { "id": "w-ai-adoption", "signalType": "hiring", "subtype": "ai-adoption", "points": 40, "maxEventsPerAccount": 2,
+      "hypothesis": "A named AI-adoption owner means budget and a mandate exist but the org's skills don't yet - peak receptivity for outside training and enablement help", "status": "untested" },
+    { "id": "w-ai-eng", "signalType": "hiring", "subtype": "ai-eng", "points": 20, "maxEventsPerAccount": 3,
+      "hypothesis": "In-house AI engineering hiring at a non-AI-native company signals committed budget - the builders will need the rest of the org brought along", "status": "untested" },
+    { "id": "w-data-platform", "signalType": "hiring", "subtype": "data-platform", "points": 10, "maxEventsPerAccount": 3,
+      "hypothesis": "Data-platform investment is the groundwork phase of AI adoption - earlier in the journey, weaker but real intent", "status": "untested" },
+    { "id": "w-generic-eng", "signalType": "hiring", "subtype": "generic-eng", "points": 3, "maxEventsPerAccount": 5,
+      "hypothesis": "Generic engineering volume shows organizational health, not AI intent", "status": "untested" },
+    { "id": "w-funding", "signalType": "funding", "points": 15,
+      "hypothesis": "A recent raise at a mid-market company funds transformation initiatives - AI programs are where boards push that spend now", "status": "untested" },
+    { "id": "w-press", "signalType": "press", "points": 15, "maxEventsPerAccount": 5,
+      "hypothesis": "Public AI announcements commit leadership to outcomes ahead of internal capability - narrative precedes skills", "status": "untested" }
+  ],
+  "compounds": [
+    { "id": "c-owner-and-press", "requiresWeightIds": ["w-ai-adoption", "w-press"], "withinDays": 90, "multiplier": 1.5,
+      "hypothesis": "A public AI narrative plus a freshly-hired internal owner is the strongest why-now - they have promised something they cannot yet deliver", "status": "untested" }
+  ]
+}

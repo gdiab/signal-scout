@@ -37,4 +37,12 @@ describe('loadPlaybook', () => {
   it('rejects a reclassifyAtCount target that collides with a declared label id', () => {
     expect(() => loadPlaybook('tests/fixtures/bad-playbook-reclass-collision.json')).toThrow(/collid|declared/i);
   });
+  it('loads the ai-adopters playbook: described labels, 6 weights, 1 compound', () => {
+    const pb = loadPlaybook('playbooks/ai-adopters.json');
+    expect(pb.name).toBe('ai-adopters');
+    expect(pb.hiringLabels.map((l) => l.id)).toEqual(['ai-adoption', 'ai-eng', 'data-platform', 'generic-eng']);
+    expect(pb.hiringLabels.every((l) => typeof l.description === 'string' && l.description.length > 0)).toBe(true);
+    expect(pb.weights).toHaveLength(6);
+    expect(pb.compounds).toHaveLength(1);
+  });
 });
