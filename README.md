@@ -42,6 +42,13 @@ npx tsx src/cli.ts score
 
 Runs against the real account list (`accounts/ai-startups.json`): 30 Series A–D AI/dev-tools startups (core) plus 10 deliberately-offline contrast accounts (regional healthcare, freight, equipment manufacturers). `audit` probes live ATS boards and RSS feeds and needs no credentials.
 
+Live mode is playbook-agnostic — the classifier's label ontology, weights, and hypotheses all come from the playbook file. The repo ships a second ICP as a worked example: `ai-adopters` (mid-to-large non-AI-native companies showing AI-adoption signals — the ICP for AI consulting/training vendors). Adding it required one playbook JSON and one account list, zero classifier edits:
+
+```
+npx tsx src/cli.ts audit --accounts accounts/ai-adopters.json
+npx tsx src/cli.ts score --accounts accounts/ai-adopters.json --playbook playbooks/ai-adopters.json --report
+```
+
 Live `score` requires `ANTHROPIC_API_KEY` (it exits with a clear error naming the variable if the key is unset, before any network call is made). With a key it fetches postings from each account's ATS and classifies them with Haiku (`claude-haiku-4-5-20251001`), fetches each account's own RSS feed plus the general news feeds in `feeds/general.json`, and entity-matches the articles against the account list with the same model. Briefs are written with `claude-sonnet-5` for the top 10 scored accounts.
 
 Spend is always announced before it happens: preflight lines report the exact LLM call counts before any classification starts, `--max-postings` caps postings classified per account (default 40, most recent first) and `--max-articles` caps articles matched per feed (default 20). Every SignalEvent produced is written to `signal-events.jsonl`; low-confidence press/funding matches are written to `review-queue.jsonl` instead of being silently accepted.
